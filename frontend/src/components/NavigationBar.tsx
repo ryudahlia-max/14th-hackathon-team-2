@@ -57,7 +57,7 @@ const NAV_ITEMS: { tab: NavTab; Icon: typeof Home; ActiveIcon: () => JSX.Element
 
 export default function NavigationBar({ active, onTabChange }: Props) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-16 px-4 z-50">
+    <nav className="bg-white border-t border-gray-200 flex justify-around items-center h-16 px-4 shrink-0">
       {NAV_ITEMS.map(({ tab, Icon, ActiveIcon }) => {
         const isActive = tab === active;
         return (
