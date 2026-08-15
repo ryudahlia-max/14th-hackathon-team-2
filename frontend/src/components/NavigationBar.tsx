@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import { Home, Bell, Mail, User } from 'lucide-react';
 
 export type NavTab = 'home' | 'notifications' | 'messages' | 'profile';
