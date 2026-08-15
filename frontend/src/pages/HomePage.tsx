@@ -3,8 +3,10 @@ import { Menu, Sun } from 'lucide-react';
 import FriendPill from '../components/FriendPill';
 import MonthCalendar from '../components/MonthCalendar';
 import WeekCalendar from '../components/WeekCalendar';
+import AddRoutineModal from '../components/AddRoutineModal';
 import NavigationBar from '../components/NavigationBar';
-import { FRIENDS, ROUTINES, MONTH_PROGRESS } from '../data/mockData';
+import { FRIENDS } from '../data/mockData';
+import type { Routine, MonthProgress } from '../types';
 
 type View = 'month' | 'week';
 
@@ -15,15 +17,71 @@ function getMonday(date: Date): Date {
   return d;
 }
 
-function weekOfMonth(monday: Date): number {
-  return Math.ceil((monday.getDate() + 6) / 7);
+// 해당 달(labelYear/labelMonth)로 표기될 때의 주차 계산
+// 달의 첫 날을 포함하는 교차주가 이 달로 표기되면 그 주가 1주차이므로 이후 주차를 +1
+function weekOfMonth(weekStart: Date, labelYear: number, labelMonth: number): number {
+  const firstOfMonth = new Date(labelYear, labelMonth, 1);
+  const firstDow = firstOfMonth.getDay();
+  const daysBack = firstDow === 0 ? 6 : firstDow - 1;
+  const firstMonday = new Date(labelYear, labelMonth, 1 - daysBack);
+  // 달 시작 교차주(첫 번째 월요일이 이전 달에 있는 경우)에서 이 달이 차지하는 날 수
+  const daysInOpeningWeek = firstDow === 0 ? 1 : firstDow === 1 ? 0 : 8 - firstDow;
+  // 교차주가 이 달로 표기되면(≥4일) 그 주가 이미 1주차를 썼으므로 weekIndex+1
+  const diffMs = weekStart.getTime() - firstMonday.getTime();
+  const weekIndex = Math.round(diffMs / (7 * 24 * 60 * 60 * 1000));
+  // 교차주가 없거나(1일=월요일) 교차주가 이 달로 표기된 경우: weekIndex+1
+  // 교차주가 이전 달로 표기된 경우(3일 이하): 첫 월요일이 weekIndex=1 → 그대로
+  return (daysInOpeningWeek === 0 || daysInOpeningWeek >= 4) ? weekIndex + 1 : weekIndex;
+}
+
+function getWeekLabel(weekStart: Date): { year: number; month: number; week: number } {
+  const sunday = new Date(weekStart);
+  sunday.setDate(weekStart.getDate() + 6);
+
+  const sYear = weekStart.getFullYear();
+  const sMonth = weekStart.getMonth();
+  const eYear = sunday.getFullYear();
+  const eMonth = sunday.getMonth();
+
+  if (sYear === eYear && sMonth === eMonth) {
+    return { year: sYear, month: sMonth, week: weekOfMonth(weekStart, sYear, sMonth) };
+  }
+
+  const lastDayOfStartMonth = new Date(sYear, sMonth + 1, 0).getDate();
+  const daysInStartMonth = lastDayOfStartMonth - weekStart.getDate() + 1;
+
+  if (daysInStartMonth >= 4) {
+    return { year: sYear, month: sMonth, week: weekOfMonth(weekStart, sYear, sMonth) };
+  } else {
+    return { year: eYear, month: eMonth, week: 1 };
+  }
+}
+
+function toDateStr(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export default function HomePage() {
   const [selectedFriendId, setSelectedFriendId] = useState(FRIENDS[0].id);
   const [view, setView] = useState<View>('month');
-  const [viewDate, setViewDate] = useState(new Date(2026, 7, 1)); // month view: first of month
-  const [weekStart, setWeekStart] = useState(() => getMonday(new Date(2026, 7, 15))); // week view: current week
+  const [viewDate, setViewDate] = useState(new Date(2026, 7, 1));
+  const [weekStart, setWeekStart] = useState(() => getMonday(new Date(2026, 7, 15)));
+  const [routines, setRoutines] = useState<Routine[]>([]);
+  const [progress, setProgress] = useState<MonthProgress>({});
+  const [selectedDay, setSelectedDay] = useState(() => toDateStr(new Date()));
+  const [showAddRoutine, setShowAddRoutine] = useState(false);
+
+  function handleAddRoutine(name: string, count: number, color: string) {
+    const id = `r-${Date.now()}`;
+    setRoutines(prev => [...prev, { id, name, color, totalCount: count }]);
+  }
+
+  function handleProgressChange(dateStr: string, routineId: string, count: number) {
+    setProgress(prev => ({
+      ...prev,
+      [dateStr]: { ...(prev[dateStr] ?? {}), [routineId]: count },
+    }));
+  }
 
   const selectedFriend = FRIENDS.find(f => f.id === selectedFriendId) ?? FRIENDS[0];
   const year = view === 'month' ? viewDate.getFullYear() : weekStart.getFullYear();
@@ -58,15 +116,16 @@ export default function HomePage() {
     }
   }
 
+  const weekLabel = view === 'week' ? getWeekLabel(weekStart) : null;
   const headerLabel =
     view === 'month'
       ? `${year}년 ${month + 1}월`
-      : `${year}년 ${month + 1}월 ${weekOfMonth(weekStart)}주차`;
+      : `${weekLabel!.year}년 ${weekLabel!.month + 1}월 ${weekLabel!.week}주차`;
 
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Hamburger */}
-      <div className="flex justify-end px-4 pt-5 pb-2">
+      <div className="flex justify-end px-4 pt-5 pb-3">
         <button aria-label="메뉴">
           <Menu size={22} color="#333" />
         </button>
@@ -85,7 +144,7 @@ export default function HomePage() {
       </div>
 
       {/* Selected user profile */}
-      <div className="flex items-center gap-3 px-4 py-3">
+      <div className="flex items-center gap-3 px-4 pt-5 pb-5">
         <div className="w-12 h-12 rounded-full bg-gray-300 overflow-hidden">
           {selectedFriend.profileImage && (
             <img src={selectedFriend.profileImage} alt={selectedFriend.name} className="w-full h-full object-cover" />
@@ -95,7 +154,7 @@ export default function HomePage() {
       </div>
 
       {/* Calendar header */}
-      <div className="flex items-center justify-between px-4 py-2">
+      <div className="flex items-center justify-between px-4 py-2 mb-3">
         <div className="flex items-center gap-2">
           <Sun size={18} className="text-[#a2bfff]" />
           <span className="font-bold text-lg">{headerLabel}</span>
@@ -122,20 +181,30 @@ export default function HomePage() {
           <MonthCalendar
             year={year}
             month={month}
-            routines={ROUTINES}
-            progress={MONTH_PROGRESS}
+            routines={routines}
+            progress={progress}
           />
         ) : (
           <WeekCalendar
             weekStart={weekStart}
-            routines={ROUTINES}
-            progress={MONTH_PROGRESS}
-            onAddRoutine={() => alert('루틴 등록 (미구현)')}
+            routines={routines}
+            progress={progress}
+            selectedDay={selectedDay}
+            onDaySelect={setSelectedDay}
+            onProgressChange={handleProgressChange}
+            onAddRoutine={() => setShowAddRoutine(true)}
           />
         )}
       </div>
 
       <NavigationBar active="home" />
+
+      {showAddRoutine && (
+        <AddRoutineModal
+          onAdd={handleAddRoutine}
+          onClose={() => setShowAddRoutine(false)}
+        />
+      )}
     </div>
   );
 }

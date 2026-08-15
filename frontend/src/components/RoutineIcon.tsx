@@ -17,35 +17,23 @@ export default function RoutineIcon({ segments, allComplete, size = 36 }: Props)
   const gap = 1.5;
   const rayH = outerR - innerR - gap;
   const rayW = Math.max(2, size * 0.09);
-  const n = segments.length;
-
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {n === 0
-        ? Array.from({ length: 8 }, (_, i) => (
-            <rect
-              key={i}
-              x={cx - rayW / 2}
-              y={cy - outerR}
-              width={rayW}
-              height={rayH}
-              rx={rayW / 2}
-              fill="#E5E7EB"
-              transform={`rotate(${i * 45} ${cx} ${cy})`}
-            />
-          ))
-        : segments.map((seg, i) => (
-            <rect
-              key={i}
-              x={cx - rayW / 2}
-              y={cy - outerR}
-              width={rayW}
-              height={rayH}
-              rx={rayW / 2}
-              fill={seg.filled ? seg.color : '#E5E7EB'}
-              transform={`rotate(${i * (360 / n)} ${cx} ${cy})`}
-            />
-          ))}
+      {Array.from({ length: 8 }, (_, i) => {
+        const seg = segments[i];
+        return (
+          <rect
+            key={i}
+            x={cx - rayW / 2}
+            y={cy - outerR}
+            width={rayW}
+            height={rayH}
+            rx={rayW / 2}
+            fill={seg?.filled ? seg.color : '#E5E7EB'}
+            transform={`rotate(${i * 45} ${cx} ${cy})`}
+          />
+        );
+      })}
       <circle
         cx={cx}
         cy={cy}
