@@ -1,10 +1,13 @@
-import NavigationBar from './components/NavigationBar';
+import { useState } from 'react';
+import NavigationBar, { type NavTab } from './components/NavigationBar';
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState<NavTab>('home');
+
   return (
     <div className="flex flex-col min-h-svh">
       <div className="flex-1 pb-16" />
-      <NavigationBar active="home" />
+      <NavigationBar active={activeTab} onTabChange={setActiveTab} />
     </div>
   );
 }
