@@ -24,11 +24,14 @@ export default function NavigationBar({ active, onTabChange }: Props) {
             key={tab}
             onClick={() => onTabChange?.(tab)}
             aria-label={tab}
-            className={`flex items-center justify-center p-2 transition-colors ${
-              isActive ? 'text-black' : 'text-gray-400 hover:text-gray-600'
-            }`}
+            className="flex items-center justify-center p-2 transition-colors"
           >
-            <Icon size={24} strokeWidth={isActive ? 2 : 1.5} />
+            <Icon
+              size={24}
+              strokeWidth={1.5}
+              color={isActive ? '#6E6E6E' : '#9CA3AF'}
+              fill={isActive ? '#BCCFF8' : 'none'}
+            />
           </button>
         );
       })}
