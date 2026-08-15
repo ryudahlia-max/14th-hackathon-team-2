@@ -1,10 +1,13 @@
-import { Routes, Route } from 'react-router-dom'
-import Home from '../pages/Home.tsx'
+import { useState } from 'react';
+import NavigationBar, { type NavTab } from './components/NavigationBar';
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState<NavTab>('home');
+
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-    </Routes>
-  )
+    <div className="flex flex-col min-h-svh">
+      <div className="flex-1 pb-16" />
+      <NavigationBar active={activeTab} onTabChange={setActiveTab} />
+    </div>
+  );
 }
