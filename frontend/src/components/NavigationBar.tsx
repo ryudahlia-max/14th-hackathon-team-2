@@ -17,7 +17,7 @@ const ActiveHome = () => (
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
       fill={FILL} stroke={STROKE_ON} strokeWidth={SW} strokeLinecap="round" strokeLinejoin="round" />
     <polyline points="9 22 9 12 15 12 15 22"
-      fill="white" stroke={STROKE_ON} strokeWidth={SW} strokeLinecap="round" strokeLinejoin="round" />
+      fill={FILL} stroke={STROKE_ON} strokeWidth={SW} strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -65,12 +65,9 @@ export default function NavigationBar({ active, onTabChange }: Props) {
             key={tab}
             onClick={() => onTabChange?.(tab)}
             aria-label={tab}
-            className="flex items-center justify-center p-2 transition-colors"
+            className="flex items-center justify-center p-2"
           >
-            {isActive
-              ? <ActiveIcon />
-              : <Icon size={24} strokeWidth={SW} color={STROKE_OFF} />
-            }
+            {isActive ? <ActiveIcon /> : <Icon size={24} strokeWidth={SW} color={STROKE_OFF} />}
           </button>
         );
       })}
