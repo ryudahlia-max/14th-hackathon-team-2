@@ -68,7 +68,7 @@ export default function NotificationPage() {
   const [tab, setTab] = useState<NotificationTab>('friendRoutine');
 
   return (
-    <div className="flex w-full flex-col items-start gap-[17px] pl-7 pt-4">
+    <div className="flex w-full flex-col items-start gap-4 pl-7 pt-4">
       <p className="text-lg font-bold text-black">알림</p>
       <div className="flex gap-2.5 items-center pr-7">
         <button
