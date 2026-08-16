@@ -1,0 +1,1 @@
+package com.team2.wellness.engagement.ai.application; public class ImageGenerationException extends RuntimeException { private final String code; public ImageGenerationException(String code){this.code=code;} public String code(){return code;} }

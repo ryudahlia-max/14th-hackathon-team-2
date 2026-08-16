@@ -10,6 +10,7 @@ public interface CoreAccessPort {
     List<UUID> getGroupMemberIds(UUID groupId);
     Optional<MissedRoutineOccurrence> getMissedRoutineOccurrence(UUID occurrenceId, UUID targetUserId);
     Optional<UserSummary> getUserSummary(UUID userId);
+    boolean hasAiImageConsent(UUID userId);
 
     record MissedRoutineOccurrence(UUID occurrenceId, UUID routineId, UUID targetUserId) { }
     record UserSummary(UUID userId, String nickname) { }
