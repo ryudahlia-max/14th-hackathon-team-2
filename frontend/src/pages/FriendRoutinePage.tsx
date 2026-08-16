@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Sun } from 'lucide-react';
+import { Sun, Heart, Smile } from 'lucide-react';
 
 type NotificationTab = 'friendRoutine' | 'receivedLikes';
+type Reaction = 'heart' | 'smile';
 
 interface RoutineGroup {
   name: string;
@@ -9,6 +10,33 @@ interface RoutineGroup {
   timeAgo: string;
   routines: string[];
 }
+
+interface LikedRoutine {
+  name: string;
+  reaction: Reaction;
+}
+
+interface ReceivedLikeGroup {
+  name: string;
+  timeAgo: string;
+  routines: LikedRoutine[];
+}
+
+const LIKE_GROUPS: ReceivedLikeGroup[] = [
+  {
+    name: '연진',
+    timeAgo: '1시간 전',
+    routines: [
+      { name: '물 마시기', reaction: 'heart' },
+      { name: '물 마시기', reaction: 'smile' },
+    ],
+  },
+];
+
+const REACTION_ICONS: Record<Reaction, typeof Heart> = {
+  heart: Heart,
+  smile: Smile,
+};
 
 const GROUPS: RoutineGroup[] = [
   {
@@ -64,6 +92,31 @@ function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
   );
 }
 
+function ReceivedLikeGroupItem({ name, timeAgo, routines }: ReceivedLikeGroup) {
+  return (
+    <div className="flex flex-col items-end gap-2.5 w-full">
+      <div className="flex items-center gap-1.5 pl-7 w-full">
+        <div className="size-8 rounded-full bg-gray-300 shrink-0" />
+        <p className="text-xs text-black">
+          <span className="font-bold">{name}</span>님이 내 루틴에 공감을 남겼습니다.{' '}
+          <span className="text-[#8b8b8b]">{timeAgo}</span>
+        </p>
+      </div>
+      <div className="flex flex-col items-center gap-1.5 w-full border-l border-[#6e6e6e]">
+        {routines.map((routine, i) => {
+          const Icon = REACTION_ICONS[routine.reaction];
+          return (
+            <div key={i} className="flex items-center justify-between pl-3.5 pr-5 w-full">
+              <p className="text-sm text-black">{routine.name}</p>
+              <Icon size={16} strokeWidth={1.5} color="#6e6e6e" />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function NotificationPage() {
   const [tab, setTab] = useState<NotificationTab>('friendRoutine');
 
@@ -89,11 +142,11 @@ export default function NotificationPage() {
         </button>
       </div>
       <div className="flex flex-col gap-5 pr-7">
-        {tab === 'friendRoutine' ? (
-          GROUPS.map((group) => <NotificationGroup key={group.name} {...group} />)
-        ) : (
-          <p className="text-sm text-[#8b8b8b] pl-7">받은 공감이 없습니다.</p>
-        )}
+        {tab === 'friendRoutine'
+          ? GROUPS.map((group) => <NotificationGroup key={group.name} {...group} />)
+          : LIKE_GROUPS.map((group) => (
+              <ReceivedLikeGroupItem key={group.name} {...group} />
+            ))}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import NavigationBar, { type NavTab } from './components/NavigationBar';
-import NotificationPage from './pages/NotificationPage';
+import NotificationPage from './pages/FriendRoutinePage';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('home');
