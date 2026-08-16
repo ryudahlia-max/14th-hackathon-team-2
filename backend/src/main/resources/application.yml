@@ -48,3 +48,26 @@ app:
     jwks-uri: ${SUPABASE_JWKS_URI:http://localhost:54321/auth/v1/.well-known/jwks.json}
     jwt-audience: ${SUPABASE_JWT_AUDIENCE:authenticated}
     secret-key: ${SUPABASE_SECRET_KEY:}
+    storage:
+      avatar-bucket: ${SUPABASE_AVATAR_BUCKET:avatars}
+      ai-bucket: ${SUPABASE_AI_BUCKET:ai-results}
+      chat-bucket: ${SUPABASE_CHAT_BUCKET:chat-media}
+      signed-url-seconds: ${SUPABASE_SIGNED_URL_SECONDS:300}
+      max-image-bytes: ${SUPABASE_MAX_IMAGE_BYTES:10485760}
+  openai:
+    base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+    api-key: ${OPENAI_API_KEY:}
+    image-model: ${OPENAI_IMAGE_MODEL:gpt-image-2}
+    timeout-seconds: ${OPENAI_TIMEOUT_SECONDS:90}
+  ai:
+    worker:
+      enabled: ${AI_WORKER_ENABLED:true}
+      initial-delay-ms: ${AI_WORKER_INITIAL_DELAY_MS:5000}
+      fixed-delay-ms: ${AI_WORKER_FIXED_DELAY_MS:3000}
+  recap:
+    enabled: ${MONTHLY_RECAP_ENABLED:true}
+    cron: ${MONTHLY_RECAP_CRON:0 5 0 1 * *}
+    zone: ${MONTHLY_RECAP_ZONE:Asia/Seoul}
+  push:
+    webhook-url: ${PUSH_WEBHOOK_URL:}
+    bearer-token: ${PUSH_WEBHOOK_BEARER_TOKEN:}

@@ -9,6 +9,7 @@ Private wellness routine and social communication service for the 14th hackathon
 - `supabase/`: local Supabase configuration
 - `docs/BACKEND_PLAN.md`: one-week backend delivery plan and A/B integration checkpoints
 - `docs/DEVELOPER_B_TASKS.md`: self-contained engagement-module assignment for Developer B
+- `docs/DEPLOYMENT.md`: Supabase and Render release checklist
 - `AGENTS.md`: mandatory ownership and collaboration rules for coding agents
 
 ## Backend quick start

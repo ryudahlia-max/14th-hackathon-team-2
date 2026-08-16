@@ -28,5 +28,15 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
+      - key: OPENAI_BASE_URL
+        value: https://api.openai.com
       - key: OPENAI_IMAGE_MODEL
         value: gpt-image-2
+      - key: AI_WORKER_ENABLED
+        value: true
+      - key: MONTHLY_RECAP_ENABLED
+        value: true
+      - key: PUSH_WEBHOOK_URL
+        sync: false
+      - key: PUSH_WEBHOOK_BEARER_TOKEN
+        sync: false

@@ -16,7 +16,10 @@ Developer B가 구현한 기능은 채팅/리액션, AI 미래 이미지 작업,
 | `MediaStoragePort` | `findFaceAsset`, `read`, `storeAiOutput`, `temporaryDownloadUrl` | Supabase Storage 읽기/쓰기 및 서명 URL 발급 |
 | `RealtimePublisherPort` | `publish(topic, eventType, payload)` | Supabase Realtime broadcast 발행 |
 | `PushNotificationPort` | `send(PushCommand)` | FCM/APNs 등 push 발송. 예외를 caller로 전파해도 B 서비스가 기록을 보존한다. |
-| `ImageGenerationPort` | `generate(ImageCommand)` | 기본 WebClient 구현이 포함되어 있다. A는 API key/네트워크 설정만 제공하거나 필요 시 교체한다. |
+| `ImageGenerationPort` | `generate(ImageCommand)` | A의 `OpenAiImageAdapter`가 참조 이미지 편집과 일반 이미지 생성을 구분한다. |
+
+위 포트의 A 어댑터는 `infrastructure` 패키지에 연결되었다. 외부 전달은 활성 DB 트랜잭션이
+있으면 커밋 이후 실행되므로 저장된 메시지와 알림보다 먼저 전송되지 않는다.
 
 ## 환경 변수
 
@@ -34,15 +37,17 @@ SUPABASE_SECRET_KEY=
 
 ## Storage 버킷과 경로
 
-권장 private 버킷: `user-media`, `ai-outputs`.
+Private 버킷: `avatars`, `chat-media`, `ai-results`.
 
 | 용도 | object key 규칙 |
 |---|---|
-| 등록 얼굴 참조 | `faces/{userId}/current.png` |
-| AI 미래 이미지 | `ai-generations/{targetUserId}/{jobId}.png` |
-| 월간 리캡 이미지 | `monthly-recaps/{groupId}/{yyyy-MM}.png` |
+| 등록 얼굴 참조 | `avatars/{userId}/current.png` 또는 프로필에 저장한 `avatars/...` 경로 |
+| 채팅 이미지 | `chat-media/{ownerId}/{objectId}.{ext}` |
+| AI 미래 이미지 | `ai-results/ai-generations/{targetUserId}/{objectId}.{ext}` |
+| 월간 리캡 이미지 | `ai-results/ai-generations/{groupId}/{objectId}.{ext}` |
 
-얼굴 및 AI 결과는 private 객체로 유지한다. API 응답에서 표시가 필요할 때에만 `temporaryDownloadUrl`로 짧은 만료의 서명 URL을 제공한다. `MediaStoragePort.storeAiOutput`은 현재 owner UUID와 결과 바이트를 받으므로 A의 어댑터는 호출 문맥에 따라 위 규칙을 적용하거나 포트 확장을 B와 조율해야 한다.
+얼굴 및 AI 결과는 private 객체로 유지한다. API 응답에서 표시가 필요할 때에만
+`temporaryDownloadUrl`로 기본 5분 만료의 서명 URL을 제공한다.
 
 ## Realtime 계약
 
@@ -115,10 +120,16 @@ PATCH /api/v1/engagement/notifications/read-all
 
 각 테이블의 Supabase RLS 활성화와 정책은 Developer A 소유다.
 
-## 알려진 제한과 TODO
+## A 통합 결과
 
-- AI 작업을 정기적으로 `processNext()` 호출하는 scheduler/worker는 A가 운영 환경에 연결해야 한다.
-- `storeAiOutput`은 jobId/month를 인자로 받지 않아 정확한 객체 경로 부여를 위해 포트 command 확장을 권장한다.
-- 알림 목록은 entity를 그대로 반환한다. API 응답 DTO와 cursor wrapper 표준화는 공통 API 규약에 맞춰 정리할 수 있다.
-- OpenAI HTTP 오류 분류는 429/5xx/연결 timeout을 재시도 대상으로 다룬다. production 관측성, backoff queue, dead-letter 처리는 운영 어댑터에서 보강한다.
-- 현재 AI WebClient는 이미지 생성 요청에 서버 소유 프롬프트만 전달한다. 얼굴 참조 이미지를 provider edit 입력으로 보낼 경우 OpenAI Images edit multipart 계약에 맞춘 별도 adapter 확장이 필요하다.
+- AI 큐 워커가 기본 3초 간격으로 작업을 claim하며 외부 호출 중 DB lock을 유지하지 않는다.
+- OpenAI 429/5xx/네트워크 오류만 재시도하고 4xx 검증·moderation 거절은 `BLOCKED` 처리한다.
+- 얼굴 참조 요청은 `gpt-image-2` 이미지 edit multipart 계약을 사용한다.
+- Storage와 Realtime은 최신 `sb_secret_...` 키를 지원하고 레거시 서비스 역할 JWT도 호환한다.
+- 모든 애플리케이션 테이블은 RLS 활성화 및 브라우저 역할 권한 회수 대상이다.
+- private Realtime topic은 채팅방 멤버 또는 AI 작업 참여자만 구독할 수 있다.
+- 월간 recap과 AI worker scheduler가 연결되었다.
+- push webhook이 설정되지 않은 환경에서는 인앱 알림만 제공한다.
+
+현재 AI 요청의 `occurrenceId`는 Core의 `routineId`를 전달한다. Core 어댑터가 해당 루틴에서
+최근 1년 이내의 미완료 예정일을 검증한다.

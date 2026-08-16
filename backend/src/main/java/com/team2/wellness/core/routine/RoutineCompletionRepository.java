@@ -26,6 +26,12 @@ public interface RoutineCompletionRepository extends JpaRepository<RoutineComple
             Pageable pageable
     );
 
+    long countByUserIdInAndCompletionDateBetween(
+            Collection<UUID> userIds,
+            LocalDate start,
+            LocalDate end
+    );
+
     @Query("""
             select completion from RoutineCompletion completion
             where completion.userId in :userIds
