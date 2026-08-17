@@ -26,14 +26,14 @@ export default function MonthCalendar({ year, month, routines, progress }: Props
     return routines.flatMap(r =>
       Array.from({ length: r.totalCount }, (_, i) => ({
         color: r.color,
-        filled: (dayProgress[r.id] ?? 0) > i,
+        filled: (dayProgress[r.id] ?? []).includes(i),
       }))
     );
   }
 
   function isAllComplete(dateStr: string) {
     const dayProgress = progress[dateStr] ?? {};
-    return routines.length > 0 && routines.every(r => (dayProgress[r.id] ?? 0) >= r.totalCount);
+    return routines.length > 0 && routines.every(r => (dayProgress[r.id]?.length ?? 0) >= r.totalCount);
   }
 
   const rows = Math.ceil((startOffset + daysInMonth) / 7);

@@ -12,7 +12,7 @@ export interface Routine {
 }
 
 export interface DayProgress {
-  [routineId: string]: number;
+  [routineId: string]: number[]; // completed instance indices, e.g. [0, 2]
 }
 
 export interface MonthProgress {

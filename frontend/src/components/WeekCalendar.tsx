@@ -8,7 +8,7 @@ interface Props {
   progress: MonthProgress;
   selectedDay: string;
   onDaySelect: (dateStr: string) => void;
-  onProgressChange: (dateStr: string, routineId: string, count: number) => void;
+  onToggleInstance: (dateStr: string, routineId: string, instanceIndex: number) => void;
   onAddRoutine: () => void;
   onEditRoutine: (routine: Routine) => void;
 }
@@ -25,7 +25,7 @@ export default function WeekCalendar({
   progress,
   selectedDay,
   onDaySelect,
-  onProgressChange,
+  onToggleInstance,
   onAddRoutine,
   onEditRoutine,
 }: Props) {
@@ -41,14 +41,14 @@ export default function WeekCalendar({
     return routines.flatMap(r =>
       Array.from({ length: r.totalCount }, (_, i) => ({
         color: r.color,
-        filled: (dayProgress[r.id] ?? 0) > i,
+        filled: (dayProgress[r.id] ?? []).includes(i),
       }))
     );
   }
 
   function isAllComplete(dateStr: string) {
     const dayProgress = progress[dateStr] ?? {};
-    return routines.length > 0 && routines.every(r => (dayProgress[r.id] ?? 0) >= r.totalCount);
+    return routines.length > 0 && routines.every(r => (dayProgress[r.id]?.length ?? 0) >= r.totalCount);
   }
 
   const selectedDayProgress = progress[selectedDay] ?? {};
@@ -59,9 +59,7 @@ export default function WeekCalendar({
   );
 
   function handleCheck(routineId: string, instanceIndex: number) {
-    const current = selectedDayProgress[routineId] ?? 0;
-    const newCount = current > instanceIndex ? instanceIndex : instanceIndex + 1;
-    onProgressChange(selectedDay, routineId, newCount);
+    onToggleInstance(selectedDay, routineId, instanceIndex);
   }
 
   return (
@@ -136,7 +134,7 @@ export default function WeekCalendar({
           <p className="text-sm text-gray-400 text-center py-2"></p>
         ) : (
           routineRows.map(({ routine, index }) => {
-            const checked = (selectedDayProgress[routine.id] ?? 0) > index;
+            const checked = (selectedDayProgress[routine.id] ?? []).includes(index);
             return (
               <div key={`${routine.id}-${index}`} className="flex items-center gap-3">
                 <button

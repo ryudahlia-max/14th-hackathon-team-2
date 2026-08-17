@@ -6,7 +6,7 @@ import WeekCalendar from '../components/WeekCalendar';
 import AddRoutineModal from '../components/AddRoutineModal';
 import AppNavigationBar from '../components/AppNavigationBar';
 import { FRIENDS } from '../data/mockData';
-import type { Routine, MonthProgress } from '../types';
+import type { Routine, MonthProgress, DayProgress } from '../types';
 
 type View = 'month' | 'week';
 
@@ -73,6 +73,27 @@ function loadFromStorage<T>(key: string, fallback: T): T {
   }
 }
 
+// 예전엔 루틴별 진행도를 누적 카운트(number)로 저장했던 데이터가 남아있을 수 있어
+// 완료된 인스턴스 인덱스 배열(number[])로 변환해준다.
+function loadProgressFromStorage(): Record<string, MonthProgress> {
+  const raw = loadFromStorage<Record<string, Record<string, Record<string, unknown>>>>(PROGRESS_KEY, {});
+  const migrated: Record<string, MonthProgress> = {};
+  for (const [friendId, monthProgress] of Object.entries(raw)) {
+    const days: MonthProgress = {};
+    for (const [dateStr, dayProgress] of Object.entries(monthProgress)) {
+      const normalizedDay: DayProgress = {};
+      for (const [routineId, value] of Object.entries(dayProgress)) {
+        normalizedDay[routineId] = Array.isArray(value)
+          ? (value as number[])
+          : Array.from({ length: Number(value) || 0 }, (_, i) => i);
+      }
+      days[dateStr] = normalizedDay;
+    }
+    migrated[friendId] = days;
+  }
+  return migrated;
+}
+
 export default function HomePage() {
   const [selectedFriendId, setSelectedFriendId] = useState(FRIENDS[0].id);
   const [view, setView] = useState<View>('month');
@@ -81,9 +102,7 @@ export default function HomePage() {
   const [routinesByFriend, setRoutinesByFriend] = useState<Record<string, Routine[]>>(() =>
     loadFromStorage(ROUTINES_KEY, {})
   );
-  const [progressByFriend, setProgressByFriend] = useState<Record<string, MonthProgress>>(() =>
-    loadFromStorage(PROGRESS_KEY, {})
-  );
+  const [progressByFriend, setProgressByFriend] = useState<Record<string, MonthProgress>>(loadProgressFromStorage);
   const [selectedDay, setSelectedDay] = useState(() => toDateStr(new Date()));
   const [showRoutineModal, setShowRoutineModal] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
@@ -135,14 +154,19 @@ export default function HomePage() {
     setShowRoutineModal(true);
   }
 
-  function handleProgressChange(dateStr: string, routineId: string, count: number) {
+  function handleToggleInstance(dateStr: string, routineId: string, instanceIndex: number) {
     setProgressByFriend(prev => {
       const friendProgress = prev[selectedFriendId] ?? {};
+      const dayProgress = friendProgress[dateStr] ?? {};
+      const current = dayProgress[routineId] ?? [];
+      const next = current.includes(instanceIndex)
+        ? current.filter(i => i !== instanceIndex)
+        : [...current, instanceIndex];
       return {
         ...prev,
         [selectedFriendId]: {
           ...friendProgress,
-          [dateStr]: { ...(friendProgress[dateStr] ?? {}), [routineId]: count },
+          [dateStr]: { ...dayProgress, [routineId]: next },
         },
       };
     });
@@ -249,7 +273,7 @@ export default function HomePage() {
             progress={progress}
             selectedDay={selectedDay}
             onDaySelect={setSelectedDay}
-            onProgressChange={handleProgressChange}
+            onToggleInstance={handleToggleInstance}
             onAddRoutine={openAddRoutine}
             onEditRoutine={openEditRoutine}
           />
