@@ -4,11 +4,16 @@ import { Sun, Heart, Smile } from 'lucide-react';
 type NotificationTab = 'friendRoutine' | 'receivedLikes';
 type Reaction = 'heart' | 'smile';
 
+interface RoutineEntry {
+  name: string;
+  photoUrl?: string;
+}
+
 interface RoutineGroup {
   name: string;
   count: number;
   timeAgo: string;
-  routines: string[];
+  routines: RoutineEntry[];
 }
 
 interface LikedRoutine {
@@ -43,28 +48,38 @@ const GROUPS: RoutineGroup[] = [
     name: '연진',
     count: 5,
     timeAgo: '1시간 전',
-    routines: ['물 마시기', '물 마시기', '물 마시기', '선크림 바르기', '영양제먹기'],
+    routines: [
+      { name: '물 마시기' },
+      { name: '물 마시기' },
+      { name: '물 마시기' },
+      { name: '선크림 바르기' },
+      { name: '영양제먹기' },
+    ],
   },
   {
     name: '쪙',
     count: 3,
     timeAgo: '1시간 전',
-    routines: ['물 마시기', '선크림 바르기', '영양제먹기'],
+    routines: [
+      { name: '물 마시기' },
+      { name: '선크림 바르기' },
+      { name: '영양제먹기' },
+    ],
   },
   {
     name: '현정',
     count: 9,
     timeAgo: '1시간 전',
     routines: [
-      '물 마시기',
-      '물 마시기',
-      '물 마시기',
-      '선크림 바르기',
-      '선크림 바르기',
-      '선크림 바르기',
-      '영양제먹기',
-      '영양제먹기',
-      '영양제먹기',
+      { name: '물 마시기', photoUrl: 'https://example.com/photo.jpg' },
+      { name: '물 마시기' },
+      { name: '물 마시기' },
+      { name: '선크림 바르기' },
+      { name: '선크림 바르기' },
+      { name: '선크림 바르기' },
+      { name: '영양제먹기' },
+      { name: '영양제먹기' },
+      { name: '영양제먹기' },
     ],
   },
 ];
@@ -82,9 +97,21 @@ function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
       </div>
       <div className="flex flex-col items-center gap-1.5 w-full border-l border-[#6e6e6e]">
         {routines.map((routine, i) => (
-          <div key={i} className="flex items-center justify-between pl-3.5 pr-5 w-full">
-            <p className="text-sm text-black">{routine}</p>
-            <Sun size={16} strokeWidth={1.5} color="#6e6e6e" />
+          <div key={i} className="flex flex-col gap-1.5 w-full">
+            <div className="flex items-center justify-between pl-3.5 pr-5 w-full">
+              <p className="text-sm text-black">{routine.name}</p>
+              <Sun size={16} strokeWidth={1.5} color="#6e6e6e" />
+            </div>
+            {routine.photoUrl && (
+              <div className="flex items-center gap-2 pl-3.5">
+                <img
+                  src={routine.photoUrl}
+                  alt="인증 사진"
+                  className="size-16 rounded-lg object-cover bg-gray-200"
+                />
+                <span className="text-sm text-black">사진인증</span>
+              </div>
+            )}
           </div>
         ))}
       </div>
