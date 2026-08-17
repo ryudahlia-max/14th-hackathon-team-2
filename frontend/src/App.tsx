@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import FriendRoutinePage from './pages/FriendRoutinePage';
 import MessagesPage from './pages/MessagesPage';
+import ChatRoomPage from './pages/ChatRoomPage';
+import AiImageGenPage from './pages/AiImageGenPage';
 import UserPage from './pages/UserPage';
 
 export default function App() {
@@ -13,6 +15,8 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/notifications" element={<FriendRoutinePage />} />
             <Route path="/messages" element={<MessagesPage />} />
+            <Route path="/messages/:chatId" element={<ChatRoomPage />} />
+            <Route path="/messages/:chatId/ai-image" element={<AiImageGenPage />} />
             <Route path="/profile" element={<UserPage />} />
           </Routes>
         </div>
