@@ -19,10 +19,19 @@ export interface MonthProgress {
   [dateStr: string]: DayProgress; // 'YYYY-MM-DD'
 }
 
+export interface ChatRoom {
+  id: string;
+  name: string;
+  participantIds: string[]; // friend ids, excludes me
+  isGroup: boolean;
+  createdAt: string; // ISO timestamp
+}
+
 export interface Message {
   id: string;
-  friendId: string;
-  text: string;
+  chatId: string;
+  text?: string;
+  imageUrl?: string;
   sentAt: string; // ISO timestamp
   fromMe: boolean;
 }
