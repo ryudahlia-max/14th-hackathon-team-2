@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Menu, Sun } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Sun } from 'lucide-react';
 import FriendPill from '../components/FriendPill';
 import MonthCalendar from '../components/MonthCalendar';
 import WeekCalendar from '../components/WeekCalendar';
@@ -61,15 +61,35 @@ function toDateStr(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+const ROUTINES_KEY = 'routine-app:routines';
+const PROGRESS_KEY = 'routine-app:progress';
+
+function loadFromStorage<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function HomePage() {
   const [selectedFriendId, setSelectedFriendId] = useState(FRIENDS[0].id);
   const [view, setView] = useState<View>('month');
   const [viewDate, setViewDate] = useState(new Date(2026, 7, 1));
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date(2026, 7, 15)));
-  const [routines, setRoutines] = useState<Routine[]>([]);
-  const [progress, setProgress] = useState<MonthProgress>({});
+  const [routines, setRoutines] = useState<Routine[]>(() => loadFromStorage(ROUTINES_KEY, []));
+  const [progress, setProgress] = useState<MonthProgress>(() => loadFromStorage(PROGRESS_KEY, {}));
   const [selectedDay, setSelectedDay] = useState(() => toDateStr(new Date()));
   const [showAddRoutine, setShowAddRoutine] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(ROUTINES_KEY, JSON.stringify(routines));
+  }, [routines]);
+
+  useEffect(() => {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
+  }, [progress]);
 
   function handleAddRoutine(name: string, count: number, color: string) {
     const id = `r-${Date.now()}`;
@@ -124,15 +144,8 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Hamburger */}
-      <div className="flex justify-end px-4 pt-5 pb-3">
-        <button aria-label="메뉴">
-          <Menu size={22} color="#333" />
-        </button>
-      </div>
-
       {/* Friend pills */}
-      <div className="flex gap-3 overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-3 overflow-x-auto px-4 pt-8 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {FRIENDS.map(friend => (
           <FriendPill
             key={friend.id}
