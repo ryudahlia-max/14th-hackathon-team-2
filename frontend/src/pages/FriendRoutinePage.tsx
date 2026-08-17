@@ -109,7 +109,6 @@ function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
                   alt="인증 사진"
                   className="size-16 rounded-lg object-cover bg-gray-200"
                 />
-                <span className="text-sm text-black">사진인증</span>
               </div>
             )}
           </div>
