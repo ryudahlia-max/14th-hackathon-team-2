@@ -86,8 +86,8 @@ const GROUPS: RoutineGroup[] = [
 
 function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
   return (
-    <div className="flex flex-col items-end gap-2.5 w-full">
-      <div className="flex items-center gap-1.5 pl-7 w-full">
+    <div className="flex flex-col items-end gap-1 w-full pl-7">
+      <div className="flex items-center gap-1.5 w-full">
         <div className="size-8 rounded-full bg-gray-300 shrink-0" />
         <p className="text-xs text-black">
           <span className="font-bold">{name}</span>님이 루틴을{' '}
@@ -95,15 +95,15 @@ function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
           <span className="text-[#8b8b8b]">{timeAgo}</span>
         </p>
       </div>
-      <div className="flex flex-col items-center gap-1.5 w-full border-l border-[#6e6e6e]">
+      <div className="flex flex-col items-center gap-1 w-full border-l border-[#6e6e6e]">
         {routines.map((routine, i) => (
-          <div key={i} className="flex flex-col gap-1.5 w-full">
-            <div className="flex items-center justify-between pl-3.5 pr-5 w-full">
+          <div key={i} className="flex flex-col gap-1 w-full">
+            <div className="flex items-center justify-between pl-2 pr-4 w-full">
               <p className="text-sm text-black">{routine.name}</p>
               <Sun size={16} strokeWidth={1.5} color="#6e6e6e" />
             </div>
             {routine.photoUrl && (
-              <div className="flex items-center gap-2 pl-3.5">
+              <div className="flex items-center gap-2 pl-2">
                 <img
                   src={routine.photoUrl}
                   alt="인증 사진"
@@ -120,19 +120,19 @@ function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
 
 function ReceivedLikeGroupItem({ name, timeAgo, routines }: ReceivedLikeGroup) {
   return (
-    <div className="flex flex-col items-end gap-2.5 w-full">
-      <div className="flex items-center gap-1.5 pl-7 w-full">
+    <div className="flex flex-col items-end gap-2 w-full pl-7">
+      <div className="flex items-center gap-1.5 w-full">
         <div className="size-8 rounded-full bg-gray-300 shrink-0" />
         <p className="text-xs text-black">
           <span className="font-bold">{name}</span>님이 내 루틴에 공감을 남겼습니다.{' '}
           <span className="text-[#8b8b8b]">{timeAgo}</span>
         </p>
       </div>
-      <div className="flex flex-col items-center gap-1.5 w-full border-l border-[#6e6e6e]">
+      <div className="flex flex-col items-center gap-1 w-full border-l border-[#6e6e6e]">
         {routines.map((routine, i) => {
           const Icon = REACTION_ICONS[routine.reaction];
           return (
-            <div key={i} className="flex items-center justify-between pl-3.5 pr-5 w-full">
+            <div key={i} className="flex items-center justify-between pl-2 pr-4 w-full">
               <p className="text-sm text-black">{routine.name}</p>
               <Icon size={16} strokeWidth={1.5} color="#6e6e6e" />
             </div>
