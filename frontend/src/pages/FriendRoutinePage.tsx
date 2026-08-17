@@ -86,8 +86,8 @@ const GROUPS: RoutineGroup[] = [
 
 function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
   return (
-    <div className="flex flex-col items-end gap-1 w-full pl-7">
-      <div className="flex items-center gap-1.5 w-full">
+    <div className="flex flex-col w-full">
+      <div className="flex items-center gap-1.5 w-full pl-7">
         <div className="size-8 rounded-full bg-gray-300 shrink-0" />
         <p className="text-xs text-black">
           <span className="font-bold">{name}</span>님이 루틴을{' '}
@@ -95,7 +95,7 @@ function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
           <span className="text-[#8b8b8b]">{timeAgo}</span>
         </p>
       </div>
-      <div className="flex flex-col items-center gap-1 w-full border-l border-[#6e6e6e]">
+      <div className="flex flex-col w-full border-l border-[#6e6e6e] ml-19">
         {routines.map((routine, i) => (
           <div key={i} className="flex flex-col gap-1 w-full">
             <div className="flex items-center justify-between pl-2 pr-4 w-full">
@@ -120,15 +120,15 @@ function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
 
 function ReceivedLikeGroupItem({ name, timeAgo, routines }: ReceivedLikeGroup) {
   return (
-    <div className="flex flex-col items-end gap-2 w-full pl-7">
-      <div className="flex items-center gap-1.5 w-full">
+    <div className="flex flex-col w-full">
+      <div className="flex items-center gap-1.5 w-full pl-7">
         <div className="size-8 rounded-full bg-gray-300 shrink-0" />
         <p className="text-xs text-black">
           <span className="font-bold">{name}</span>님이 내 루틴에 공감을 남겼습니다.{' '}
           <span className="text-[#8b8b8b]">{timeAgo}</span>
         </p>
       </div>
-      <div className="flex flex-col items-center gap-1 w-full border-l border-[#6e6e6e]">
+      <div className="flex flex-col items-center gap-1 w-full border-l border-[#6e6e6e] ml-19">
         {routines.map((routine, i) => {
           const Icon = REACTION_ICONS[routine.reaction];
           return (
