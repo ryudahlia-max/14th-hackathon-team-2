@@ -78,29 +78,45 @@ export default function HomePage() {
   const [view, setView] = useState<View>('month');
   const [viewDate, setViewDate] = useState(new Date(2026, 7, 1));
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date(2026, 7, 15)));
-  const [routines, setRoutines] = useState<Routine[]>(() => loadFromStorage(ROUTINES_KEY, []));
-  const [progress, setProgress] = useState<MonthProgress>(() => loadFromStorage(PROGRESS_KEY, {}));
+  const [routinesByFriend, setRoutinesByFriend] = useState<Record<string, Routine[]>>(() =>
+    loadFromStorage(ROUTINES_KEY, {})
+  );
+  const [progressByFriend, setProgressByFriend] = useState<Record<string, MonthProgress>>(() =>
+    loadFromStorage(PROGRESS_KEY, {})
+  );
   const [selectedDay, setSelectedDay] = useState(() => toDateStr(new Date()));
   const [showAddRoutine, setShowAddRoutine] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem(ROUTINES_KEY, JSON.stringify(routines));
-  }, [routines]);
+    localStorage.setItem(ROUTINES_KEY, JSON.stringify(routinesByFriend));
+  }, [routinesByFriend]);
 
   useEffect(() => {
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
-  }, [progress]);
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(progressByFriend));
+  }, [progressByFriend]);
+
+  const routines = routinesByFriend[selectedFriendId] ?? [];
+  const progress = progressByFriend[selectedFriendId] ?? {};
 
   function handleAddRoutine(name: string, count: number, color: string) {
     const id = `r-${Date.now()}`;
-    setRoutines(prev => [...prev, { id, name, color, totalCount: count }]);
+    setRoutinesByFriend(prev => ({
+      ...prev,
+      [selectedFriendId]: [...(prev[selectedFriendId] ?? []), { id, name, color, totalCount: count }],
+    }));
   }
 
   function handleProgressChange(dateStr: string, routineId: string, count: number) {
-    setProgress(prev => ({
-      ...prev,
-      [dateStr]: { ...(prev[dateStr] ?? {}), [routineId]: count },
-    }));
+    setProgressByFriend(prev => {
+      const friendProgress = prev[selectedFriendId] ?? {};
+      return {
+        ...prev,
+        [selectedFriendId]: {
+          ...friendProgress,
+          [dateStr]: { ...(friendProgress[dateStr] ?? {}), [routineId]: count },
+        },
+      };
+    });
   }
 
   const selectedFriend = FRIENDS.find(f => f.id === selectedFriendId) ?? FRIENDS[0];
