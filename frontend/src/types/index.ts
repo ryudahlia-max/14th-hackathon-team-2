@@ -18,3 +18,11 @@ export interface DayProgress {
 export interface MonthProgress {
   [dateStr: string]: DayProgress; // 'YYYY-MM-DD'
 }
+
+export interface Message {
+  id: string;
+  friendId: string;
+  text: string;
+  sentAt: string; // ISO timestamp
+  fromMe: boolean;
+}
