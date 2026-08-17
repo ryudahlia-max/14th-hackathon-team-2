@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
+import type { Routine } from '../types';
 
 const COLORS = [
   '#60A5FA',
@@ -13,18 +14,26 @@ const COLORS = [
 ];
 
 interface Props {
-  onAdd: (name: string, count: number, color: string) => void;
+  initial?: Routine;
+  onSave: (name: string, count: number, color: string) => void;
+  onDelete?: () => void;
   onClose: () => void;
 }
 
-export default function AddRoutineModal({ onAdd, onClose }: Props) {
-  const [name, setName] = useState('');
-  const [count, setCount] = useState(1);
-  const [color, setColor] = useState(COLORS[0]);
+export default function AddRoutineModal({ initial, onSave, onDelete, onClose }: Props) {
+  const isEditing = !!initial;
+  const [name, setName] = useState(initial?.name ?? '');
+  const [count, setCount] = useState(initial?.totalCount ?? 1);
+  const [color, setColor] = useState(initial?.color ?? COLORS[0]);
 
   function handleSubmit() {
     if (!name.trim()) return;
-    onAdd(name.trim(), count, color);
+    onSave(name.trim(), count, color);
+    onClose();
+  }
+
+  function handleDelete() {
+    onDelete?.();
     onClose();
   }
 
@@ -33,7 +42,7 @@ export default function AddRoutineModal({ onAdd, onClose }: Props) {
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative bg-white rounded-t-2xl w-full max-w-[393px] px-6 pt-6 pb-10">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-bold">루틴 등록</h2>
+          <h2 className="text-lg font-bold">{isEditing ? '루틴 수정' : '루틴 등록'}</h2>
           <button onClick={onClose} className="p-1">
             <X size={20} color="#6b7280" />
           </button>
@@ -88,13 +97,24 @@ export default function AddRoutineModal({ onAdd, onClose }: Props) {
           </div>
         </div>
 
-        <button
-          onClick={handleSubmit}
-          disabled={!name.trim()}
-          className="w-full py-3 rounded-xl bg-[#a2bfff] text-white font-semibold text-sm disabled:opacity-40"
-        >
-          추가
-        </button>
+        <div className="flex gap-3">
+          {isEditing && onDelete && (
+            <button
+              onClick={handleDelete}
+              aria-label="루틴 삭제"
+              className="w-12 shrink-0 rounded-xl border border-red-200 flex items-center justify-center"
+            >
+              <Trash2 size={18} color="#ef4444" />
+            </button>
+          )}
+          <button
+            onClick={handleSubmit}
+            disabled={!name.trim()}
+            className="flex-1 py-3 rounded-xl bg-[#a2bfff] text-white font-semibold text-sm disabled:opacity-40"
+          >
+            {isEditing ? '수정' : '추가'}
+          </button>
+        </div>
       </div>
     </div>
   );

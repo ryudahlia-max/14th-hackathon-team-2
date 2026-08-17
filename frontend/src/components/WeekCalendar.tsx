@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react';
+import { Check, Pencil } from 'lucide-react';
 import RoutineIcon from './RoutineIcon';
 import type { Routine, MonthProgress } from '../types';
 
@@ -10,6 +10,7 @@ interface Props {
   onDaySelect: (dateStr: string) => void;
   onProgressChange: (dateStr: string, routineId: string, count: number) => void;
   onAddRoutine: () => void;
+  onEditRoutine: (routine: Routine) => void;
 }
 
 const DAY_NAMES = ['월', '화', '수', '목', '금', '토', '일'];
@@ -26,6 +27,7 @@ export default function WeekCalendar({
   onDaySelect,
   onProgressChange,
   onAddRoutine,
+  onEditRoutine,
 }: Props) {
   const today = new Date();
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -148,11 +150,20 @@ export default function WeekCalendar({
                   {checked && <Check size={11} color="white" strokeWidth={3} />}
                 </button>
                 <span
-                  className="text-sm"
+                  className="flex-1 text-sm"
                   style={{ color: checked ? routine.color : '#374151' }}
                 >
                   {routine.name}
                 </span>
+                {index === 0 && (
+                  <button
+                    onClick={() => onEditRoutine(routine)}
+                    aria-label={`${routine.name} 수정`}
+                    className="p-1 text-gray-400"
+                  >
+                    <Pencil size={14} />
+                  </button>
+                )}
               </div>
             );
           })

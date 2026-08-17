@@ -85,7 +85,8 @@ export default function HomePage() {
     loadFromStorage(PROGRESS_KEY, {})
   );
   const [selectedDay, setSelectedDay] = useState(() => toDateStr(new Date()));
-  const [showAddRoutine, setShowAddRoutine] = useState(false);
+  const [showRoutineModal, setShowRoutineModal] = useState(false);
+  const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
 
   useEffect(() => {
     localStorage.setItem(ROUTINES_KEY, JSON.stringify(routinesByFriend));
@@ -98,12 +99,40 @@ export default function HomePage() {
   const routines = routinesByFriend[selectedFriendId] ?? [];
   const progress = progressByFriend[selectedFriendId] ?? {};
 
-  function handleAddRoutine(name: string, count: number, color: string) {
-    const id = `r-${Date.now()}`;
+  function handleSaveRoutine(name: string, count: number, color: string) {
+    setRoutinesByFriend(prev => {
+      const friendRoutines = prev[selectedFriendId] ?? [];
+      const next = editingRoutine
+        ? friendRoutines.map(r => (r.id === editingRoutine.id ? { ...r, name, color, totalCount: count } : r))
+        : [...friendRoutines, { id: `r-${Date.now()}`, name, color, totalCount: count }];
+      return { ...prev, [selectedFriendId]: next };
+    });
+  }
+
+  function handleDeleteRoutine(routineId: string) {
     setRoutinesByFriend(prev => ({
       ...prev,
-      [selectedFriendId]: [...(prev[selectedFriendId] ?? []), { id, name, color, totalCount: count }],
+      [selectedFriendId]: (prev[selectedFriendId] ?? []).filter(r => r.id !== routineId),
     }));
+    setProgressByFriend(prev => {
+      const friendProgress = prev[selectedFriendId] ?? {};
+      const nextProgress: MonthProgress = {};
+      for (const [dateStr, dayProgress] of Object.entries(friendProgress)) {
+        const { [routineId]: _removed, ...rest } = dayProgress;
+        nextProgress[dateStr] = rest;
+      }
+      return { ...prev, [selectedFriendId]: nextProgress };
+    });
+  }
+
+  function openAddRoutine() {
+    setEditingRoutine(null);
+    setShowRoutineModal(true);
+  }
+
+  function openEditRoutine(routine: Routine) {
+    setEditingRoutine(routine);
+    setShowRoutineModal(true);
   }
 
   function handleProgressChange(dateStr: string, routineId: string, count: number) {
@@ -221,17 +250,20 @@ export default function HomePage() {
             selectedDay={selectedDay}
             onDaySelect={setSelectedDay}
             onProgressChange={handleProgressChange}
-            onAddRoutine={() => setShowAddRoutine(true)}
+            onAddRoutine={openAddRoutine}
+            onEditRoutine={openEditRoutine}
           />
         )}
       </div>
 
       <AppNavigationBar />
 
-      {showAddRoutine && (
+      {showRoutineModal && (
         <AddRoutineModal
-          onAdd={handleAddRoutine}
-          onClose={() => setShowAddRoutine(false)}
+          initial={editingRoutine ?? undefined}
+          onSave={handleSaveRoutine}
+          onDelete={editingRoutine ? () => handleDeleteRoutine(editingRoutine.id) : undefined}
+          onClose={() => setShowRoutineModal(false)}
         />
       )}
     </div>
