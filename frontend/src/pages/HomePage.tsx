@@ -4,7 +4,7 @@ import FriendPill from '../components/FriendPill';
 import MonthCalendar from '../components/MonthCalendar';
 import WeekCalendar from '../components/WeekCalendar';
 import AddRoutineModal from '../components/AddRoutineModal';
-import NavigationBar from '../components/NavigationBar';
+import AppNavigationBar from '../components/AppNavigationBar';
 import { FRIENDS } from '../data/mockData';
 import type { Routine, MonthProgress } from '../types';
 
@@ -226,7 +226,7 @@ export default function HomePage() {
         )}
       </div>
 
-      <NavigationBar active="home" />
+      <AppNavigationBar />
 
       {showAddRoutine && (
         <AddRoutineModal
