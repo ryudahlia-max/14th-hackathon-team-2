@@ -209,6 +209,27 @@ tempCodeRunnerFile.py
 # PyPI configuration file
 .pypirc
 
+# Java / Gradle
+.gradle/
+**/build/
+*.class
+*.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Local backend runtime
+backend/.env
+backend/logs/
+backend/tmp/
+
+# Supabase local runtime
+supabase/.branches/
+supabase/.temp/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

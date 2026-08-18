@@ -66,12 +66,9 @@ export default function NavigationBar({ active, onTabChange }: Props) {
             key={tab}
             onClick={() => onTabChange?.(tab)}
             aria-label={tab}
-            className="flex items-center justify-center p-2 transition-colors"
+            className="flex items-center justify-center p-2"
           >
-            {isActive
-              ? <ActiveIcon />
-              : <Icon size={24} strokeWidth={SW} color={STROKE_OFF} />
-            }
+            {isActive ? <ActiveIcon /> : <Icon size={24} strokeWidth={SW} color={STROKE_OFF} />}
           </button>
         );
       })}

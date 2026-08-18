@@ -1,0 +1,73 @@
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+spring:
+  application:
+    name: wellness-backend
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:54322/postgres}
+    username: ${DATABASE_USERNAME:postgres}
+    password: ${DATABASE_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: ${DATABASE_POOL_SIZE:10}
+      minimum-idle: ${DATABASE_MIN_IDLE:2}
+      connection-timeout: 10000
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration/core,classpath:db/migration/engagement
+    validate-on-migrate: true
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  supabase:
+    url: ${SUPABASE_URL:http://localhost:54321}
+    jwt-issuer: ${SUPABASE_JWT_ISSUER:http://localhost:54321/auth/v1}
+    jwks-uri: ${SUPABASE_JWKS_URI:http://localhost:54321/auth/v1/.well-known/jwks.json}
+    jwt-audience: ${SUPABASE_JWT_AUDIENCE:authenticated}
+    secret-key: ${SUPABASE_SECRET_KEY:}
+    storage:
+      avatar-bucket: ${SUPABASE_AVATAR_BUCKET:avatars}
+      ai-bucket: ${SUPABASE_AI_BUCKET:ai-results}
+      chat-bucket: ${SUPABASE_CHAT_BUCKET:chat-media}
+      signed-url-seconds: ${SUPABASE_SIGNED_URL_SECONDS:300}
+      max-image-bytes: ${SUPABASE_MAX_IMAGE_BYTES:10485760}
+  openai:
+    base-url: ${OPENAI_BASE_URL:https://api.openai.com}
+    api-key: ${OPENAI_API_KEY:}
+    image-model: ${OPENAI_IMAGE_MODEL:gpt-image-2}
+    timeout-seconds: ${OPENAI_TIMEOUT_SECONDS:90}
+  ai:
+    worker:
+      enabled: ${AI_WORKER_ENABLED:true}
+      initial-delay-ms: ${AI_WORKER_INITIAL_DELAY_MS:5000}
+      fixed-delay-ms: ${AI_WORKER_FIXED_DELAY_MS:3000}
+  recap:
+    enabled: ${MONTHLY_RECAP_ENABLED:true}
+    cron: ${MONTHLY_RECAP_CRON:0 5 0 1 * *}
+    zone: ${MONTHLY_RECAP_ZONE:Asia/Seoul}
+  push:
+    webhook-url: ${PUSH_WEBHOOK_URL:}
+    bearer-token: ${PUSH_WEBHOOK_BEARER_TOKEN:}
