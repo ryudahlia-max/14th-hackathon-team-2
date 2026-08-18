@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtDecoders;
@@ -42,7 +43,12 @@ public class SecurityConfig {
             @Value("${app.supabase.jwks-uri}") String jwksUri,
             @Value("${app.supabase.jwt-audience}") String audience
     ) {
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwksUri).build();
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwksUri)
+                .jwsAlgorithms(algorithms -> {
+                    algorithms.add(SignatureAlgorithm.RS256);
+                    algorithms.add(SignatureAlgorithm.ES256);
+                })
+                .build();
         OAuth2TokenValidator<Jwt> issuerValidator = JwtValidators.createDefaultWithIssuer(issuer);
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 issuerValidator,
