@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { Sun, Heart, Smile } from 'lucide-react';
 import AppNavigationBar from '../components/AppNavigationBar';
+import { getNotifications } from '../data/notificationStore';
+import { formatRelativeTime } from '../utils/formatRelativeTime';
+import type { RoutineCompletionNotification } from '../types';
 
 type NotificationTab = 'friendRoutine' | 'receivedLikes';
 type Reaction = 'heart' | 'smile';
@@ -44,46 +47,29 @@ const REACTION_ICONS: Record<Reaction, typeof Heart> = {
   smile: Smile,
 };
 
-const GROUPS: RoutineGroup[] = [
-  {
-    name: '연진',
-    count: 5,
-    timeAgo: '1시간 전',
-    routines: [
-      { name: '물 마시기' },
-      { name: '물 마시기' },
-      { name: '물 마시기' },
-      { name: '선크림 바르기' },
-      { name: '영양제먹기' },
-    ],
-  },
-  {
-    name: '쪙',
-    count: 3,
-    timeAgo: '1시간 전',
-    routines: [
-      { name: '물 마시기' },
-      { name: '선크림 바르기' },
-      { name: '영양제먹기' },
-    ],
-  },
-  {
-    name: '현정',
-    count: 9,
-    timeAgo: '1시간 전',
-    routines: [
-      { name: '물 마시기', photoUrl: 'https://example.com/photo.jpg' },
-      { name: '물 마시기' },
-      { name: '물 마시기' },
-      { name: '선크림 바르기' },
-      { name: '선크림 바르기' },
-      { name: '선크림 바르기' },
-      { name: '영양제먹기' },
-      { name: '영양제먹기' },
-      { name: '영양제먹기' },
-    ],
-  },
-];
+function buildRoutineGroups(): RoutineGroup[] {
+  const byFriend = new Map<string, RoutineCompletionNotification[]>();
+  for (const n of getNotifications()) {
+    const list = byFriend.get(n.friendId) ?? [];
+    list.push(n);
+    byFriend.set(n.friendId, list);
+  }
+
+  return Array.from(byFriend.values())
+    .map(list => [...list].sort((a, b) => a.completedAt.localeCompare(b.completedAt)))
+    .map(sorted => {
+      const latest = sorted[sorted.length - 1];
+      return {
+        name: latest.friendName,
+        count: sorted.length,
+        timeAgo: formatRelativeTime(latest.completedAt),
+        routines: sorted.map(n => ({ name: n.routineName })),
+        latestAt: latest.completedAt,
+      };
+    })
+    .sort((a, b) => b.latestAt.localeCompare(a.latestAt))
+    .map(({ latestAt: _latestAt, ...group }) => group);
+}
 
 function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
   return (
@@ -146,6 +132,7 @@ function ReceivedLikeGroupItem({ name, timeAgo, routines }: ReceivedLikeGroup) {
 
 export default function NotificationPage() {
   const [tab, setTab] = useState<NotificationTab>('friendRoutine');
+  const [groups] = useState<RoutineGroup[]>(buildRoutineGroups);
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -169,12 +156,18 @@ export default function NotificationPage() {
             받은 공감
           </button>
         </div>
-        <div className="flex flex-col gap-5 pr-7">
-          {tab === 'friendRoutine'
-            ? GROUPS.map((group) => <NotificationGroup key={group.name} {...group} />)
-            : LIKE_GROUPS.map((group) => (
-                <ReceivedLikeGroupItem key={group.name} {...group} />
-              ))}
+        <div className="flex flex-col gap-5 pr-7 w-full">
+          {tab === 'friendRoutine' ? (
+            groups.length === 0 ? (
+              <p className="text-sm text-gray-400">아직 알림이 없어요</p>
+            ) : (
+              groups.map((group) => <NotificationGroup key={group.name} {...group} />)
+            )
+          ) : (
+            LIKE_GROUPS.map((group) => (
+              <ReceivedLikeGroupItem key={group.name} {...group} />
+            ))
+          )}
         </div>
       </div>
       <AppNavigationBar />

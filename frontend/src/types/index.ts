@@ -35,3 +35,11 @@ export interface Message {
   sentAt: string; // ISO timestamp
   fromMe: boolean;
 }
+
+export interface RoutineCompletionNotification {
+  id: string;
+  friendId: string;
+  friendName: string;
+  routineName: string;
+  completedAt: string; // ISO timestamp
+}

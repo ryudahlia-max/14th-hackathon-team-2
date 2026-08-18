@@ -5,17 +5,7 @@ import AppNavigationBar from '../components/AppNavigationBar';
 import NewChatModal from '../components/NewChatModal';
 import { FRIENDS } from '../data/mockData';
 import { createGroupChat, getChats, getLastMessage, getOrCreateDirectChat } from '../data/chatStore';
-
-function formatRelativeTime(sentAt: string) {
-  const diffMin = Math.max(0, Math.floor((Date.now() - new Date(sentAt).getTime()) / 60000));
-  if (diffMin < 60) return `${diffMin}분 전`;
-
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 23) return `${diffHour}시간 전`;
-
-  const d = new Date(sentAt);
-  return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
-}
+import { formatRelativeTime } from '../utils/formatRelativeTime';
 
 export default function MessagesPage() {
   const navigate = useNavigate();

@@ -6,6 +6,7 @@ import WeekCalendar from '../components/WeekCalendar';
 import AddRoutineModal from '../components/AddRoutineModal';
 import AppNavigationBar from '../components/AppNavigationBar';
 import { FRIENDS } from '../data/mockData';
+import { addRoutineCompletionNotification } from '../data/notificationStore';
 import type { Routine, MonthProgress, DayProgress } from '../types';
 
 type View = 'month' | 'week';
@@ -155,13 +156,16 @@ export default function HomePage() {
   }
 
   function handleToggleInstance(dateStr: string, routineId: string, instanceIndex: number) {
+    const current = (progressByFriend[selectedFriendId]?.[dateStr] ?? {})[routineId] ?? [];
+    const willCheck = !current.includes(instanceIndex);
+
     setProgressByFriend(prev => {
       const friendProgress = prev[selectedFriendId] ?? {};
       const dayProgress = friendProgress[dateStr] ?? {};
-      const current = dayProgress[routineId] ?? [];
-      const next = current.includes(instanceIndex)
-        ? current.filter(i => i !== instanceIndex)
-        : [...current, instanceIndex];
+      const prevList = dayProgress[routineId] ?? [];
+      const next = prevList.includes(instanceIndex)
+        ? prevList.filter(i => i !== instanceIndex)
+        : [...prevList, instanceIndex];
       return {
         ...prev,
         [selectedFriendId]: {
@@ -170,6 +174,13 @@ export default function HomePage() {
         },
       };
     });
+
+    if (willCheck) {
+      const routine = routines.find(r => r.id === routineId);
+      if (routine) {
+        addRoutineCompletionNotification(selectedFriendId, selectedFriend.name, routine.name);
+      }
+    }
   }
 
   const selectedFriend = FRIENDS.find(f => f.id === selectedFriendId) ?? FRIENDS[0];
