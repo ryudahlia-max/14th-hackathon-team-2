@@ -214,7 +214,7 @@ export default function HomePage() {
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Friend pills */}
-      <div className="flex gap-3 overflow-x-auto px-4 pt-8 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-3 overflow-x-auto px-7 pt-4 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {FRIENDS.map(friend => (
           <FriendPill
             key={friend.id}
@@ -226,7 +226,7 @@ export default function HomePage() {
       </div>
 
       {/* Selected user profile */}
-      <div className="flex items-center gap-3 px-4 pt-5 pb-5">
+      <div className="flex items-center gap-3 px-7 pt-5 pb-5">
         <div className="w-12 h-12 rounded-full bg-gray-300 overflow-hidden">
           {selectedFriend.profileImage && (
             <img src={selectedFriend.profileImage} alt={selectedFriend.name} className="w-full h-full object-cover" />
@@ -236,7 +236,7 @@ export default function HomePage() {
       </div>
 
       {/* Calendar header */}
-      <div className="flex items-center justify-between px-4 py-2 mb-3">
+      <div className="flex items-center justify-between px-7 py-2 mb-3">
         <div className="flex items-center gap-2">
           <Sun size={18} className="text-[#a2bfff]" />
           <span className="font-bold text-lg">{headerLabel}</span>
@@ -258,7 +258,7 @@ export default function HomePage() {
       </div>
 
       {/* Calendar */}
-      <div className="flex-1 overflow-y-auto px-4 pb-2">
+      <div className="flex-1 overflow-y-auto px-7 pb-2">
         {view === 'month' ? (
           <MonthCalendar
             year={year}

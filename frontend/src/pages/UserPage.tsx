@@ -5,7 +5,7 @@ import UserMenuButton from '../components/UserMenuButton';
 export default function UserPage() {
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="flex-1 overflow-y-auto flex flex-col items-start gap-8 px-8 pt-8">
+      <div className="flex-1 overflow-y-auto flex flex-col items-start gap-8 px-7 pt-4">
         <div className="flex items-center gap-4">
           <Profile />
           <div className="flex flex-col items-start gap-1">

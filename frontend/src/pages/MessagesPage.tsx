@@ -41,7 +41,7 @@ export default function MessagesPage() {
 
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="flex items-center justify-between px-4 pt-8 pb-4">
+      <div className="flex items-center justify-between px-7 pt-4 pb-4">
         <span className="text-lg font-bold">메시지</span>
         <button
           aria-label="새 채팅방"
@@ -57,7 +57,7 @@ export default function MessagesPage() {
           <button
             key={chat.id}
             onClick={() => navigate(`/messages/${chat.id}`)}
-            className="w-full flex items-center gap-3 px-4 py-3 border-b border-gray-100 text-left"
+            className="w-full flex items-center gap-3 px-7 py-3 border-b border-gray-100 text-left"
           >
             <div className="w-12 h-12 rounded-full bg-gray-300 overflow-hidden shrink-0" />
             <div className="flex-1 min-w-0">
