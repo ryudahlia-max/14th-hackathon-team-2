@@ -13,6 +13,7 @@ import MessagesPage from './pages/MessagesPage';
 import ChatRoomPage from './pages/ChatRoomPage';
 import AiImageGenPage from './pages/AiImageGenPage';
 import UserPage from './pages/UserPage';
+import FriendManagementPage from './pages/FriendManagementPage';
 
 export default function App() {
   // 알림 페이지가 라우트 전환으로 언마운트/재마운트되어도 남긴 반응이 유지되도록,
@@ -67,6 +68,7 @@ export default function App() {
             <Route path="/messages/:chatId" element={<ChatRoomPage />} />
             <Route path="/messages/:chatId/ai-image" element={<AiImageGenPage />} />
             <Route path="/profile" element={<UserPage />} />
+            <Route path="/friends" element={<FriendManagementPage />} />
           </Routes>
         </div>
       </div>
