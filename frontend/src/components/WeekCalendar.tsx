@@ -95,14 +95,15 @@ export default function WeekCalendar({
               onClick={() => onDaySelect(dateStr)}
               className="flex flex-col items-center gap-1 py-1"
             >
-              <RoutineIcon segments={segments} allComplete={allComplete} size={40} />
+              <div
+                className={`w-11 h-11 rounded-full flex items-center justify-center ${isSelected ? 'border border-[#6E6E6E]' : ''
+                  }`}
+              >
+                <RoutineIcon segments={segments} allComplete={allComplete} size={40} />
+              </div>
               <span
-                className={`text-xs leading-none px-1.5 py-0.5 rounded-full ${isToday
-                    ? 'bg-gray-200 font-bold'
-                    : isSelected
-                      ? 'border border-[#a2bfff]'
-                      : ''
-                  } ${i === 5
+                className={`text-xs leading-none px-1.5 py-0.5 rounded-full ${isToday ? 'bg-gray-200 font-bold' : ''
+                  } ${isSelected ? 'border border-[#6E6E6E]' : ''} ${i === 5
                     ? 'text-blue-400'
                     : i === 6
                       ? 'text-red-400'
