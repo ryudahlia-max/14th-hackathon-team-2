@@ -1,9 +1,7 @@
 import AppNavigationBar from '../components/AppNavigationBar';
 import Profile from '../components/Profile';
 import UserMenuButton from '../components/UserMenuButton';
-import { FRIENDS } from '../data/mockData';
-
-const ME_ID = '1'; // 이가영 (본인) — 친구 수 계산 시 제외
+import { FRIENDS, ME_ID } from '../data/mockData';
 
 export default function UserPage() {
   const friendCount = FRIENDS.filter(f => f.id !== ME_ID).length;

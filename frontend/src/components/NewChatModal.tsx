@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { X, Check } from 'lucide-react';
-import { FRIENDS } from '../data/mockData';
+import { FRIENDS, ME_ID } from '../data/mockData';
+
+const SELECTABLE_FRIENDS = FRIENDS.filter(f => f.id !== ME_ID);
 
 interface Props {
   onCreate: (friendIds: string[], groupName: string) => void;
@@ -35,7 +37,7 @@ export default function NewChatModal({ onCreate, onClose }: Props) {
         <div className="mb-5">
           <label className="text-sm text-gray-500 mb-1.5 block">친구 선택</label>
           <div className="space-y-2">
-            {FRIENDS.map(friend => {
+            {SELECTABLE_FRIENDS.map(friend => {
               const checked = selected.includes(friend.id);
               return (
                 <button

@@ -1,5 +1,7 @@
 import type { Friend } from '../types';
 
+export const ME_ID = '1'; // 이가영 (본인)
+
 export const FRIENDS: Friend[] = [
   { id: '1', name: '이가영' },
   { id: '2', name: '연진' },
