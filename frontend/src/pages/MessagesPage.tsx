@@ -6,7 +6,13 @@ import NewChatModal from '../components/NewChatModal';
 import { FRIENDS } from '../data/mockData';
 import { createGroupChat, getChats, getLastMessage, getOrCreateDirectChat } from '../data/chatStore';
 
-function formatDate(sentAt: string) {
+function formatRelativeTime(sentAt: string) {
+  const diffMin = Math.max(0, Math.floor((Date.now() - new Date(sentAt).getTime()) / 60000));
+  if (diffMin < 60) return `${diffMin}분 전`;
+
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 23) return `${diffHour}시간 전`;
+
   const d = new Date(sentAt);
   return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 }
@@ -64,7 +70,7 @@ export default function MessagesPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{chat.name}</span>
                 {lastMessage && (
-                  <span className="text-xs text-gray-400 shrink-0">{formatDate(lastMessage.sentAt)}</span>
+                  <span className="text-xs text-gray-400 shrink-0">{formatRelativeTime(lastMessage.sentAt)}</span>
                 )}
               </div>
               <p className="text-sm text-gray-500 truncate">
