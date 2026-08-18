@@ -84,11 +84,6 @@ export default function AiImageGenPage() {
           악용 방지를 위해 건강 관리 루틴과 관련된 내용만 생성할 수 있어요.
         </p>
 
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-gray-300 shrink-0" />
-          <span className="text-xs text-gray-500">가입 시 등록한 얼굴 사진을 사용해요</span>
-        </div>
-
         <div>
           <label className="text-sm text-gray-500 mb-1.5 block">프롬프트</label>
           <textarea
@@ -97,7 +92,6 @@ export default function AiImageGenPage() {
               setPrompt(e.target.value);
               setError(null);
             }}
-            placeholder="예: 물을 안 마셔서 푸석푸석해진 피부"
             rows={3}
             className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#a2bfff] resize-none"
           />
