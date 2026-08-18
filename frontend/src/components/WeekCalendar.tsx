@@ -92,7 +92,7 @@ export default function WeekCalendar({
           return (
             <button key={i} onClick={() => onDaySelect(dateStr)} className="flex flex-col items-center py-1">
               <div
-                className={`flex flex-col items-center gap-1 px-1 py-1 rounded-2xl ${isSelected ? 'border border-[#6E6E6E]' : ''
+                className={`flex flex-col items-center gap-1 px-1 py-1 rounded-full ${isSelected ? 'border border-[#6E6E6E]' : ''
                   }`}
               >
                 <RoutineIcon segments={segments} allComplete={allComplete} size={40} />
