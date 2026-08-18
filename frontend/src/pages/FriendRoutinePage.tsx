@@ -74,7 +74,7 @@ function buildRoutineGroups(): RoutineGroup[] {
 function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
   return (
     <div className="flex flex-col w-full">
-      <div className="flex items-start gap-1.5 w-full">
+      <div className="flex items-center gap-1.5 w-full">
         <div className="size-8 rounded-full bg-gray-300 shrink-0" />
         <p className="text-xs text-black flex-1 min-w-0">
           <span className="font-bold">{name}</span>님이 루틴을{' '}
@@ -108,7 +108,7 @@ function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
 function ReceivedLikeGroupItem({ name, timeAgo, routines }: ReceivedLikeGroup) {
   return (
     <div className="flex flex-col w-full">
-      <div className="flex items-start gap-1.5 w-full">
+      <div className="flex items-center gap-1.5 w-full">
         <div className="size-8 rounded-full bg-gray-300 shrink-0" />
         <p className="text-xs text-black flex-1 min-w-0">
           <span className="font-bold">{name}</span>님이 내 루틴에 공감을 남겼습니다.{' '}
