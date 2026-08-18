@@ -1,43 +1,12 @@
-import { authHeaders } from './auth';
+import { api } from '../services/apiClient';
 import type { Friend, FriendSummary, Group, InviteToken } from '../types/friend';
 
-async function readErrorMessage(res: Response, fallback: string): Promise<string> {
-  try {
-    const body: unknown = await res.json();
-    if (
-      body &&
-      typeof body === 'object' &&
-      'message' in body &&
-      typeof (body as { message: unknown }).message === 'string' &&
-      (body as { message: string }).message
-    ) {
-      return (body as { message: string }).message;
-    }
-  } catch {
-    // 응답 본문이 JSON이 아니면 fallback 사용
-  }
-  return fallback;
-}
-
 export async function createInvite(): Promise<InviteToken> {
-  const res = await fetch('/api/v1/friends/invites', {
-    method: 'POST',
-    headers: authHeaders(),
-  });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '초대 코드 발급에 실패했습니다.'));
-  }
-  return res.json();
+  return api.post<InviteToken>('/api/v1/friends/invites');
 }
 
 export async function acceptInvite(token: string): Promise<void> {
-  const res = await fetch(`/api/v1/friends/invites/${encodeURIComponent(token)}/accept`, {
-    method: 'POST',
-    headers: authHeaders(),
-  });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '친구 추가에 실패했습니다.'));
-  }
+  await api.post<unknown>(`/api/v1/friends/invites/${encodeURIComponent(token)}/accept`);
 }
 
 // GET /api/v1/friends는 { userId, nickname }만 내려주고 avatarUrl이 없다.
@@ -53,24 +22,14 @@ function toFriend(summary: FriendSummary): Friend {
 }
 
 export async function getFriends(): Promise<Friend[]> {
-  const res = await fetch('/api/v1/friends', { headers: authHeaders() });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '친구 목록을 불러오지 못했습니다.'));
-  }
-  const summaries: FriendSummary[] = await res.json();
+  const summaries = await api.get<FriendSummary[]>('/api/v1/friends');
   return summaries.map(toFriend);
 }
 
 // GET /api/v1/friends와 마찬가지로 DELETE /api/v1/friends/{friendId}는
 // FriendshipController에서 실제로 확인함 (204 No Content).
 export async function removeFriend(friendId: string): Promise<void> {
-  const res = await fetch(`/api/v1/friends/${encodeURIComponent(friendId)}`, {
-    method: 'DELETE',
-    headers: authHeaders(),
-  });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '친구 삭제에 실패했습니다.'));
-  }
+  await api.delete<unknown>(`/api/v1/friends/${encodeURIComponent(friendId)}`);
 }
 
 // GroupService.DEFAULT_MAX_MEMBERS = 8 (소유자 포함 총 정원).
@@ -96,11 +55,7 @@ interface GroupDetailResponse {
 }
 
 export async function getGroups(): Promise<Group[]> {
-  const res = await fetch('/api/v1/groups', { headers: authHeaders() });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '그룹 목록을 불러오지 못했습니다.'));
-  }
-  const summaries: GroupSummaryResponse[] = await res.json();
+  const summaries = await api.get<GroupSummaryResponse[]>('/api/v1/groups');
   return summaries.map((s) => ({
     id: s.id,
     name: s.name,
@@ -112,15 +67,7 @@ export async function getGroups(): Promise<Group[]> {
 // GroupController.create: POST /api/v1/groups, body { name, memberIds }.
 // memberIds는 전부 나와 이미 친구(ACCEPTED)여야 하고 최대 7명까지만 허용된다.
 export async function createGroup(name: string, memberIds: string[]): Promise<Group> {
-  const res = await fetch('/api/v1/groups', {
-    method: 'POST',
-    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, memberIds }),
-  });
-  if (!res.ok) {
-    throw new Error(await readErrorMessage(res, '그룹 생성에 실패했습니다.'));
-  }
-  const detail: GroupDetailResponse = await res.json();
+  const detail = await api.post<GroupDetailResponse>('/api/v1/groups', { name, memberIds });
   return {
     id: detail.id,
     name: detail.name,
