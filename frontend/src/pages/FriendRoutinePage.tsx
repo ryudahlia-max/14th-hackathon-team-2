@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Sun, Heart, Smile } from 'lucide-react';
 import AppNavigationBar from '../components/AppNavigationBar';
+import Avatar from '../components/Avatar';
 import { getNotifications } from '../data/notificationStore';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
 import { useAutoRefresh } from '../utils/useAutoRefresh';
@@ -15,6 +16,7 @@ interface RoutineEntry {
 }
 
 interface RoutineGroup {
+  friendId: string;
   name: string;
   count: number;
   latestAt: string; // ISO timestamp, formatted at render time so it stays live
@@ -61,6 +63,7 @@ function buildRoutineGroups(): RoutineGroup[] {
     .map(sorted => {
       const latest = sorted[sorted.length - 1];
       return {
+        friendId: latest.friendId,
         name: latest.friendName,
         count: sorted.length,
         latestAt: latest.completedAt,
@@ -70,11 +73,11 @@ function buildRoutineGroups(): RoutineGroup[] {
     .sort((a, b) => b.latestAt.localeCompare(a.latestAt));
 }
 
-function NotificationGroup({ name, count, latestAt, routines }: RoutineGroup) {
+function NotificationGroup({ friendId, name, count, latestAt, routines }: RoutineGroup) {
   return (
     <div className="flex flex-col w-full">
       <div className="flex items-center gap-1.5 w-full">
-        <div className="size-8 rounded-full bg-gray-300 shrink-0" />
+        <Avatar friendId={friendId} className="size-8" />
         <p className="text-xs text-black flex-1 min-w-0">
           <span className="font-bold">{name}</span>님이 루틴을{' '}
           <span className="font-bold">{count}회</span> 완료했습니다.{' '}

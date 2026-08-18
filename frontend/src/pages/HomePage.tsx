@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Sun } from 'lucide-react';
 import FriendPill from '../components/FriendPill';
+import Avatar from '../components/Avatar';
 import MonthCalendar from '../components/MonthCalendar';
 import WeekCalendar from '../components/WeekCalendar';
 import AddRoutineModal from '../components/AddRoutineModal';
@@ -251,11 +252,7 @@ export default function HomePage() {
 
       {/* Selected user profile */}
       <div className="flex items-center gap-3 px-7 pt-5 pb-5">
-        <div className="w-12 h-12 rounded-full bg-gray-300 overflow-hidden">
-          {selectedFriend.profileImage && (
-            <img src={selectedFriend.profileImage} alt={selectedFriend.name} className="w-full h-full object-cover" />
-          )}
-        </div>
+        <Avatar friendId={selectedFriendId} className="w-12 h-12" />
         <span className="text-base font-medium">{selectedFriend.name}</span>
       </div>
 
