@@ -238,7 +238,12 @@ function ReceivedLikeGroupItem({ name, timeAgo, routines }: ReceivedLikeGroup) {
           return (
             <div key={i} className="flex items-center justify-between gap-2 pl-2 pr-4 w-full">
               <p className="text-sm text-black flex-1 min-w-0 truncate">{routine.name}</p>
-              <Icon size={16} strokeWidth={1.5} color="#6e6e6e" />
+              <Icon
+                size={16}
+                strokeWidth={1.5}
+                className={REACTION_COLORS[routine.reaction]}
+                fill={routine.reaction === 'heart' ? 'currentColor' : 'none'}
+              />
             </div>
           );
         })}
