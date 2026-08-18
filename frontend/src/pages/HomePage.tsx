@@ -232,7 +232,13 @@ export default function HomePage() {
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Friend pills */}
-      <div className="flex gap-3 overflow-x-auto px-7 pt-4 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        onWheel={e => {
+          if (e.deltaY === 0) return;
+          e.currentTarget.scrollLeft += e.deltaY;
+        }}
+        className="flex gap-3 overflow-x-auto px-7 pt-4 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {FRIENDS.map(friend => (
           <FriendPill
             key={friend.id}
