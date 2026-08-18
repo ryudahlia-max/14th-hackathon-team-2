@@ -40,6 +40,9 @@ export interface RoutineCompletionNotification {
   id: string;
   friendId: string;
   friendName: string;
+  routineId: string;
   routineName: string;
+  dateStr: string; // 'YYYY-MM-DD', the day the instance belongs to
+  instanceIndex: number;
   completedAt: string; // ISO timestamp
 }

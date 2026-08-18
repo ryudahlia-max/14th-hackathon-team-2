@@ -6,7 +6,7 @@ import WeekCalendar from '../components/WeekCalendar';
 import AddRoutineModal from '../components/AddRoutineModal';
 import AppNavigationBar from '../components/AppNavigationBar';
 import { FRIENDS } from '../data/mockData';
-import { addRoutineCompletionNotification } from '../data/notificationStore';
+import { removeRoutineCompletionNotification, setRoutineCompletionNotification } from '../data/notificationStore';
 import type { Routine, MonthProgress, DayProgress } from '../types';
 
 type View = 'month' | 'week';
@@ -175,11 +175,18 @@ export default function HomePage() {
       };
     });
 
-    if (willCheck) {
-      const routine = routines.find(r => r.id === routineId);
-      if (routine) {
-        addRoutineCompletionNotification(selectedFriendId, selectedFriend.name, routine.name);
-      }
+    const routine = routines.find(r => r.id === routineId);
+    if (willCheck && routine) {
+      setRoutineCompletionNotification({
+        friendId: selectedFriendId,
+        friendName: selectedFriend.name,
+        routineId,
+        routineName: routine.name,
+        dateStr,
+        instanceIndex,
+      });
+    } else if (!willCheck) {
+      removeRoutineCompletionNotification(selectedFriendId, routineId, dateStr, instanceIndex);
     }
   }
 
