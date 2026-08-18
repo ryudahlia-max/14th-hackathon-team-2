@@ -97,7 +97,11 @@ export default function WeekCalendar({
             >
               <RoutineIcon segments={segments} allComplete={allComplete} size={40} />
               <span
-                className={`text-xs leading-none px-1.5 py-0.5 rounded-full ${isToday ? 'bg-gray-200 font-bold' : ''
+                className={`text-xs leading-none px-1.5 py-0.5 rounded-full ${isToday
+                    ? 'bg-gray-200 font-bold'
+                    : isSelected
+                      ? 'border border-[#a2bfff]'
+                      : ''
                   } ${i === 5
                     ? 'text-blue-400'
                     : i === 6
