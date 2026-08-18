@@ -149,9 +149,9 @@ export default function NotificationPage() {
 
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="flex-1 overflow-y-auto flex w-full flex-col items-start gap-4 px-4 pt-8">
+      <div className="flex-1 overflow-y-auto flex w-full flex-col items-start gap-4 pl-7 pt-4">
         <p className="text-lg font-bold text-black">알림</p>
-        <div className="flex gap-2.5 items-center">
+        <div className="flex gap-2.5 items-center pr-7">
           <button
             onClick={() => setTab('friendRoutine')}
             className={`h-8 px-4 rounded-full border border-[#6e6e6e] text-sm ${
@@ -169,7 +169,7 @@ export default function NotificationPage() {
             받은 공감
           </button>
         </div>
-        <div className="flex flex-col gap-5 w-full">
+        <div className="flex flex-col gap-5 pr-7">
           {tab === 'friendRoutine'
             ? GROUPS.map((group) => <NotificationGroup key={group.name} {...group} />)
             : LIKE_GROUPS.map((group) => (
