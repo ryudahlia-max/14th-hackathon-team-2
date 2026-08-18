@@ -6,11 +6,13 @@ import NewChatModal from '../components/NewChatModal';
 import { FRIENDS } from '../data/mockData';
 import { createGroupChat, getChats, getLastMessage, getOrCreateDirectChat } from '../data/chatStore';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
+import { useAutoRefresh } from '../utils/useAutoRefresh';
 
 export default function MessagesPage() {
   const navigate = useNavigate();
   const [chats, setChats] = useState(() => getChats());
   const [showNewChat, setShowNewChat] = useState(false);
+  useAutoRefresh(30000);
 
   const conversations = chats
     .map(chat => ({ chat, lastMessage: getLastMessage(chat.id) }))

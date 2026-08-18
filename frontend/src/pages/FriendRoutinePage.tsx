@@ -3,6 +3,7 @@ import { Sun, Heart, Smile } from 'lucide-react';
 import AppNavigationBar from '../components/AppNavigationBar';
 import { getNotifications } from '../data/notificationStore';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
+import { useAutoRefresh } from '../utils/useAutoRefresh';
 import type { RoutineCompletionNotification } from '../types';
 
 type NotificationTab = 'friendRoutine' | 'receivedLikes';
@@ -16,7 +17,7 @@ interface RoutineEntry {
 interface RoutineGroup {
   name: string;
   count: number;
-  timeAgo: string;
+  latestAt: string; // ISO timestamp, formatted at render time so it stays live
   routines: RoutineEntry[];
 }
 
@@ -62,16 +63,14 @@ function buildRoutineGroups(): RoutineGroup[] {
       return {
         name: latest.friendName,
         count: sorted.length,
-        timeAgo: formatRelativeTime(latest.completedAt),
-        routines: sorted.map(n => ({ name: n.routineName })),
         latestAt: latest.completedAt,
+        routines: sorted.map(n => ({ name: n.routineName })),
       };
     })
-    .sort((a, b) => b.latestAt.localeCompare(a.latestAt))
-    .map(({ latestAt: _latestAt, ...group }) => group);
+    .sort((a, b) => b.latestAt.localeCompare(a.latestAt));
 }
 
-function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
+function NotificationGroup({ name, count, latestAt, routines }: RoutineGroup) {
   return (
     <div className="flex flex-col w-full">
       <div className="flex items-center gap-1.5 w-full">
@@ -79,7 +78,7 @@ function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
         <p className="text-xs text-black flex-1 min-w-0">
           <span className="font-bold">{name}</span>님이 루틴을{' '}
           <span className="font-bold">{count}회</span> 완료했습니다.{' '}
-          <span className="text-[#8b8b8b]">{timeAgo}</span>
+          <span className="text-[#8b8b8b]">{formatRelativeTime(latestAt)}</span>
         </p>
       </div>
       <div className="flex flex-col border-l border-[#6e6e6e] ml-12">
@@ -133,6 +132,7 @@ function ReceivedLikeGroupItem({ name, timeAgo, routines }: ReceivedLikeGroup) {
 export default function NotificationPage() {
   const [tab, setTab] = useState<NotificationTab>('friendRoutine');
   const [groups] = useState<RoutineGroup[]>(buildRoutineGroups);
+  useAutoRefresh(30000);
 
   return (
     <div className="flex flex-col h-full bg-white">
