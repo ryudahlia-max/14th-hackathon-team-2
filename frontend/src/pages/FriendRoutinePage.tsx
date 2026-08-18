@@ -74,7 +74,7 @@ function buildRoutineGroups(): RoutineGroup[] {
 function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
   return (
     <div className="flex flex-col w-full">
-      <div className="flex items-center gap-1.5 w-full">
+      <div className="flex items-start gap-1.5 w-full">
         <div className="size-8 rounded-full bg-gray-300 shrink-0" />
         <p className="text-xs text-black flex-1 min-w-0">
           <span className="font-bold">{name}</span>님이 루틴을{' '}
@@ -85,9 +85,9 @@ function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
       <div className="flex flex-col w-full border-l border-[#6e6e6e] ml-12">
         {routines.map((routine, i) => (
           <div key={i} className="flex flex-col gap-1 w-full">
-            <div className="flex items-center gap-2 pl-2 pr-4 w-full">
-              <p className="text-sm text-black min-w-0 truncate">{routine.name}</p>
-              <Sun size={16} strokeWidth={1.5} color="#6e6e6e" className="shrink-0" />
+            <div className="flex items-center justify-between gap-2 pl-2 pr-4 w-full">
+              <p className="text-sm text-black flex-1 min-w-0 truncate">{routine.name}</p>
+              <Sun size={16} strokeWidth={1.5} color="#6e6e6e" />
             </div>
             {routine.photoUrl && (
               <div className="flex items-center gap-2 pl-2">
@@ -108,7 +108,7 @@ function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
 function ReceivedLikeGroupItem({ name, timeAgo, routines }: ReceivedLikeGroup) {
   return (
     <div className="flex flex-col w-full">
-      <div className="flex items-center gap-1.5 w-full">
+      <div className="flex items-start gap-1.5 w-full">
         <div className="size-8 rounded-full bg-gray-300 shrink-0" />
         <p className="text-xs text-black flex-1 min-w-0">
           <span className="font-bold">{name}</span>님이 내 루틴에 공감을 남겼습니다.{' '}
@@ -119,9 +119,9 @@ function ReceivedLikeGroupItem({ name, timeAgo, routines }: ReceivedLikeGroup) {
         {routines.map((routine, i) => {
           const Icon = REACTION_ICONS[routine.reaction];
           return (
-            <div key={i} className="flex items-center gap-2 pl-2 pr-4 w-full">
-              <p className="text-sm text-black min-w-0 truncate">{routine.name}</p>
-              <Icon size={16} strokeWidth={1.5} color="#6e6e6e" className="shrink-0" />
+            <div key={i} className="flex items-center justify-between gap-2 pl-2 pr-4 w-full">
+              <p className="text-sm text-black flex-1 min-w-0 truncate">{routine.name}</p>
+              <Icon size={16} strokeWidth={1.5} color="#6e6e6e" />
             </div>
           );
         })}
