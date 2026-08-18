@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import AppNavigationBar from '../components/AppNavigationBar';
 import NewChatModal from '../components/NewChatModal';
-import { FRIENDS } from '../data/mockData';
+import { FRIENDS, ME_ID } from '../data/mockData';
 import { createGroupChat, getChats, getLastMessage, getOrCreateDirectChat } from '../data/chatStore';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
 import { useAutoRefresh } from '../utils/useAutoRefresh';
@@ -27,8 +27,8 @@ export default function MessagesPage() {
     if (friendIds.length === 1 && !groupName) {
       chatId = getOrCreateDirectChat(friendIds[0]);
     } else {
-      const fallbackName = friendIds
-        .map(id => FRIENDS.find(f => f.id === id)?.name)
+      const me = FRIENDS.find(f => f.id === ME_ID)?.name;
+      const fallbackName = [me, ...friendIds.map(id => FRIENDS.find(f => f.id === id)?.name)]
         .filter(Boolean)
         .join(', ');
       chatId = createGroupChat(groupName || fallbackName, friendIds);
