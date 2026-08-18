@@ -5,8 +5,8 @@ export interface AuthContextValue {
   session: Session | null;
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: string | null; session: Session | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null; session: Session | null }>;
   signOut: () => Promise<void>;
 }
 

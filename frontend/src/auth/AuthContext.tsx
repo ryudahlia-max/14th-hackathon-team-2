@@ -33,23 +33,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await ensureProfile(email.split('@')[0] || '사용자');
       } catch (profileError) {
         console.error('프로필 초기화에 실패했습니다.', profileError);
-        return { error: '프로필 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.' };
+        return { error: '프로필 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.', session: data.session };
       }
     }
-    return { error: error?.message ?? null };
+    return { error: error?.message ?? null, session: data.session };
   }
 
   async function signIn(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (!error) {
       try {
         await ensureProfile(email.split('@')[0] || '사용자');
       } catch (profileError) {
         console.error('프로필 초기화에 실패했습니다.', profileError);
-        return { error: '프로필 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.' };
+        return { error: '프로필 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.', session: data.session };
       }
     }
-    return { error: error?.message ?? null };
+    return { error: error?.message ?? null, session: data.session };
   }
 
   async function signOut() {

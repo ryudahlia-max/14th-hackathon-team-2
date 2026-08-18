@@ -28,7 +28,7 @@ export default function LoginPage() {
       setError(result.error);
       return;
     }
-    if (mode === 'signUp') {
+    if (mode === 'signUp' && !result.session) {
       setSignedUpNotice(true);
       return;
     }
