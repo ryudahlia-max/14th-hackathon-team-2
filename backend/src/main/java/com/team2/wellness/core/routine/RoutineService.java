@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.UUID;
@@ -125,19 +126,54 @@ public class RoutineService {
     }
 
     public List<MissedRoutine> missedRoutines(UUID ownerId) {
-        List<MissedRoutine> result = new ArrayList<>();
-        for (Routine routine : list(ownerId)) {
-            LocalDate today = LocalDate.now(ZoneId.of(routine.getTimezone()));
-            LocalDate earliest = today.minusDays(366);
-            for (LocalDate date = today.minusDays(1); !date.isBefore(earliest); date = date.minusDays(1)) {
-                if (routine.isScheduledOn(date)
-                        && completionRepository.findByRoutineIdAndCompletionDate(routine.getId(), date).isEmpty()) {
-                    result.add(new MissedRoutine(routine.getId(), routine.getTitle(), date));
-                    break;
+        return list(ownerId).stream()
+                .map(this::missedRoutine)
+                .flatMap(Optional::stream)
+                .toList();
+    }
+
+    public Optional<MissedRoutine> missedRoutine(UUID ownerId, UUID routineId) {
+        return routineRepository.findByIdAndOwnerId(routineId, ownerId).flatMap(this::missedRoutine);
+    }
+
+    private Optional<MissedRoutine> missedRoutine(Routine routine) {
+        LocalDate today = LocalDate.now(ZoneId.of(routine.getTimezone()));
+        LocalDate earliest = today.minusDays(366);
+        if (routine.getStartDate().isAfter(earliest)) {
+            earliest = routine.getStartDate();
+        }
+        LocalDate latest = today.minusDays(1);
+        if (routine.getEndDate() != null && routine.getEndDate().isBefore(latest)) {
+            latest = routine.getEndDate();
+        }
+        if (latest.isBefore(earliest)) {
+            return Optional.empty();
+        }
+
+        Set<LocalDate> completedDates = new HashSet<>();
+        completionRepository.findAllByRoutineIdAndCompletionDateBetween(routine.getId(), earliest, latest)
+                .forEach(completion -> completedDates.add(completion.getCompletionDate()));
+
+        int missedCount = 0;
+        LocalDate mostRecentMissedDate = null;
+        for (LocalDate date = latest; !date.isBefore(earliest); date = date.minusDays(1)) {
+            if (routine.isScheduledOn(date) && !completedDates.contains(date)) {
+                missedCount++;
+                if (mostRecentMissedDate == null) {
+                    mostRecentMissedDate = date;
                 }
             }
         }
-        return result;
+        if (missedCount == 0) {
+            return Optional.empty();
+        }
+        return Optional.of(new MissedRoutine(
+                routine.getId(),
+                routine.getTitle(),
+                routine.getCategory(),
+                mostRecentMissedDate,
+                missedCount
+        ));
     }
 
     public Routine ownedRoutine(UUID userId, UUID routineId) {
@@ -183,6 +219,12 @@ public class RoutineService {
     ) {
     }
 
-    public record MissedRoutine(UUID routineId, String title, LocalDate missedDate) {
+    public record MissedRoutine(
+            UUID routineId,
+            String title,
+            String category,
+            LocalDate missedDate,
+            int missedCount
+    ) {
     }
 }

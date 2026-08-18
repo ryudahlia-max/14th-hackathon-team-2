@@ -12,7 +12,7 @@ Developer B가 구현한 기능은 채팅/리액션, AI 미래 이미지 작업,
 |---|---|---|
 | `CurrentUserPort` | `currentUserId()` | Supabase JWT subject를 UUID로 변환 |
 | `CoreAccessPort` | `areAcceptedFriends`, `isGroupMember`, `getGroupMemberIds` | 친구 수락 상태와 현재 그룹 멤버십 확인 |
-| `CoreAccessPort` | `getMissedRoutineOccurrence`, `hasAiImageConsent`, `getUserSummary` | AI 요청용 미완료 occurrence/동의 확인 및 사용자 요약 제공 |
+| `CoreAccessPort` | `getMissedRoutineOccurrence`, `hasAiImageConsent`, `getUserSummary` | AI 요청용 미완료 occurrence(루틴명·카테고리·최근 366일 미실천 횟수·마지막 날짜 포함), 동의 확인 및 사용자 요약 제공 |
 | `MediaStoragePort` | `findFaceAsset`, `read`, `storeAiOutput`, `temporaryDownloadUrl` | Supabase Storage 읽기/쓰기 및 서명 URL 발급 |
 | `RealtimePublisherPort` | `publish(topic, eventType, payload)` | Supabase Realtime broadcast 발행 |
 | `PushNotificationPort` | `send(PushCommand)` | FCM/APNs 등 push 발송. 예외를 caller로 전파해도 B 서비스가 기록을 보존한다. |
@@ -100,7 +100,12 @@ Content-Type: application/json
 { "targetUserId": "...", "occurrenceId": "...", "clientRequestId": "ai-mobile-01HXYZ" }
 ```
 
-응답은 `202 Accepted`이며 `id`, `status`, `attemptCount`, `outputObjectKey`, `failureCode`를 반환한다. 클라이언트 프롬프트 입력은 받지 않는다.
+응답은 `202 Accepted`이며 `id`, `status`, `attemptCount`, `outputUrl`, `failureCode`를 반환한다. 클라이언트 프롬프트 입력은 받지 않는다.
+
+`occurrenceId`에는 선택한 `routineId`를 전달한다. 서버는 이미지 생성 직전에 해당 루틴의
+제목·카테고리, 최근 366일 예정일 기준 미실천 횟수, 가장 최근 미실천 날짜를 다시 계산한다.
+이 값들은 서버 소유의 안전 프롬프트 안에서 데이터로만 사용되며, 횟수가 많을수록 루틴 관련
+환경·소품·분위기 단서가 더 뚜렷하게 표현된다. 질병·부상·신체 비하·의학적 예측은 금지한다.
 
 ### 알림
 
@@ -132,4 +137,5 @@ PATCH /api/v1/engagement/notifications/read-all
 - push webhook이 설정되지 않은 환경에서는 인앱 알림만 제공한다.
 
 현재 AI 요청의 `occurrenceId`는 Core의 `routineId`를 전달한다. Core 어댑터가 해당 루틴에서
-최근 1년 이내의 미완료 예정일을 검증한다.
+최근 366일 이내의 미완료 예정일을 검증하고 루틴 종류·미실천 횟수·마지막 날짜를 프롬프트
+컨텍스트로 제공한다.

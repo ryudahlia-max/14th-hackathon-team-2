@@ -108,7 +108,8 @@ Flow:
 3. Persist a queued job and return HTTP 202
 4. Claim a job without holding a transaction during the OpenAI request
 5. Load the face asset through `MediaStoragePort`
-6. Call the OpenAI Image API using a server-owned prompt
+6. Call the OpenAI Image API using a server-owned prompt that includes the selected routine title/category,
+   missed occurrence count over the last 366 scheduled days, and most recent missed date
 7. Store the output through `MediaStoragePort`
 8. Create an `AI_IMAGE` chat message and notification
 9. Publish job and message events

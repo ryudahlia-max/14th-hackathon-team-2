@@ -60,10 +60,10 @@ export default function AiImageGenPage() {
         <span className="text-base font-bold">AI 미래 이미지</span>
       </div>
       <div className="flex-1 overflow-y-auto px-5 py-6">
-        <p className="text-sm leading-relaxed text-gray-600 mb-6">친구가 놓친 건강 루틴을 선택하면, 서버가 안전한 고정 프롬프트로 미래 이미지를 만들고 이 채팅방에 자동으로 전송합니다.</p>
+        <p className="text-sm leading-relaxed text-gray-600 mb-6">친구가 놓친 건강 루틴을 선택하면, 서버가 루틴 종류와 최근 미실천 횟수를 안전한 프롬프트에 반영해 미래 이미지를 만들고 이 채팅방에 자동으로 전송합니다.</p>
         {routines.length === 0 && !error && <p className="text-sm text-gray-400">생성 가능한 미완료 루틴이 없어요.</p>}
         <div className="space-y-3">
-          {routines.map(routine => <button key={routine.routineId} disabled={Boolean(generating)} onClick={() => void generate(routine.routineId)} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-left disabled:opacity-40"><p className="text-sm font-semibold">{routine.title}</p><p className="text-xs text-gray-400">{routine.missedDate} 미완료</p></button>)}
+          {routines.map(routine => <button key={routine.routineId} disabled={Boolean(generating)} onClick={() => void generate(routine.routineId)} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-left disabled:opacity-40"><p className="text-sm font-semibold">{routine.title}</p><p className="text-xs text-gray-400">최근 {routine.missedCount}회 미실천 · 마지막 {routine.missedDate}</p></button>)}
         </div>
         {generating && <div className="mt-6 rounded-xl bg-gray-100 px-4 py-4 text-sm text-gray-600">이미지를 생성하고 있어요… ({job?.status})</div>}
         {job?.status === 'SUCCEEDED' && job.outputUrl && <div className="mt-6"><img src={job.outputUrl} alt="생성된 미래 이미지" className="w-full rounded-2xl" /><p className="mt-2 text-xs text-gray-500">채팅방에 자동 전송되었습니다.</p></div>}

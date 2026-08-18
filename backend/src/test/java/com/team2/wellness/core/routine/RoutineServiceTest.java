@@ -129,6 +129,39 @@ class RoutineServiceTest {
         verify(completionRepository).delete(completion);
     }
 
+    @Test
+    void missedRoutineIncludesTypeCountAndMostRecentDate() {
+        UUID userId = UUID.randomUUID();
+        LocalDate today = LocalDate.now(java.time.ZoneId.of("Asia/Seoul"));
+        Routine routine = new Routine(
+                userId,
+                "아침 물 마시기",
+                "수분",
+                EnumSet.allOf(DayOfWeek.class),
+                LocalTime.of(9, 0),
+                "Asia/Seoul",
+                today.minusDays(5),
+                null
+        );
+        when(routineRepository.findByIdAndOwnerId(routine.getId(), userId)).thenReturn(Optional.of(routine));
+        when(completionRepository.findAllByRoutineIdAndCompletionDateBetween(
+                routine.getId(),
+                today.minusDays(5),
+                today.minusDays(1)
+        )).thenReturn(List.of(
+                new RoutineCompletion(routine.getId(), userId, today.minusDays(2), java.time.Instant.now(), null, null),
+                new RoutineCompletion(routine.getId(), userId, today.minusDays(4), java.time.Instant.now(), null, null)
+        ));
+
+        assertThat(service.missedRoutine(userId, routine.getId()))
+                .hasValueSatisfying(missed -> {
+                    assertThat(missed.title()).isEqualTo("아침 물 마시기");
+                    assertThat(missed.category()).isEqualTo("수분");
+                    assertThat(missed.missedCount()).isEqualTo(3);
+                    assertThat(missed.missedDate()).isEqualTo(today.minusDays(1));
+                });
+    }
+
     private Routine dailyRoutine(UUID userId) {
         return new Routine(
                 userId,

@@ -1,12 +1,181 @@
 package com.team2.wellness.engagement.ai.application;
-import com.team2.wellness.common.api.ApiException; import com.team2.wellness.engagement.ai.domain.AiGenerationJob; import com.team2.wellness.engagement.ai.persistence.AiGenerationJobRepository; import com.team2.wellness.engagement.chat.application.ChatService; import com.team2.wellness.engagement.chat.domain.ChatMessage; import com.team2.wellness.engagement.notification.domain.Notification; import com.team2.wellness.engagement.notification.persistence.NotificationRepository; import com.team2.wellness.engagement.port.out.*;
-import java.time.*; import java.util.*; import org.springframework.data.domain.PageRequest; import org.springframework.http.HttpStatus; import org.springframework.stereotype.Service; import org.springframework.transaction.support.TransactionTemplate;
-@Service public class AiGenerationService {
- private final AiGenerationJobRepository jobs; private final CoreAccessPort core; private final MediaStoragePort storage; private final ImageGenerationPort images; private final ChatService chat; private final NotificationRepository notifications; private final RealtimePublisherPort realtime; private final SafeFuturePromptBuilder prompts; private final TransactionTemplate tx;
- public AiGenerationService(AiGenerationJobRepository jobs, CoreAccessPort core, MediaStoragePort storage, ImageGenerationPort images, ChatService chat, NotificationRepository notifications, RealtimePublisherPort realtime, SafeFuturePromptBuilder prompts, TransactionTemplate tx){this.jobs=jobs;this.core=core;this.storage=storage;this.images=images;this.chat=chat;this.notifications=notifications;this.realtime=realtime;this.prompts=prompts;this.tx=tx;}
- public AiGenerationJob request(UUID requester, UUID target, UUID occurrence, String clientRequestId) { return tx.execute(s -> { var existing=jobs.findByRequesterIdAndClientRequestId(requester,clientRequestId); if(existing.isPresent()) return existing.get(); if(!core.areAcceptedFriends(requester,target)) throw fail(HttpStatus.FORBIDDEN,"AI_REQUIRES_FRIENDSHIP"); if(!core.hasAiImageConsent(target)) throw fail(HttpStatus.FORBIDDEN,"AI_CONSENT_REQUIRED"); if(core.getMissedRoutineOccurrence(occurrence,target).isEmpty()) throw fail(HttpStatus.BAD_REQUEST,"MISSED_OCCURRENCE_REQUIRED"); if(jobs.countByRequesterIdAndCreatedAtGreaterThanEqual(requester,LocalDate.now(ZoneOffset.UTC).atStartOfDay().toInstant(ZoneOffset.UTC))>=3) throw fail(HttpStatus.TOO_MANY_REQUESTS,"AI_DAILY_LIMIT"); return jobs.save(new AiGenerationJob(requester,target,occurrence,clientRequestId)); }); }
- public Optional<AiGenerationJob> processNext() { AiGenerationJob claimed=tx.execute(s -> jobs.findReady(Instant.now(),PageRequest.of(0,1)).stream().filter(job->job.claim(Instant.now())).findFirst().orElse(null)); if(claimed==null) return Optional.empty(); try { var face=storage.findFaceAsset(claimed.getTargetUserId()).orElseThrow(()->new NonRetryable("FACE_ASSET_MISSING")); var result=images.generate(new ImageGenerationPort.ImageCommand(prompts.build(),storage.read(face.objectKey()),face.contentType())); var stored=storage.storeAiOutput(claimed.getTargetUserId(),result.bytes(),result.contentType()); tx.executeWithoutResult(s->{ AiGenerationJob job=jobs.findById(claimed.getId()).orElseThrow(); job.succeed(stored.objectKey()); var room=chat.createDirect(job.getRequesterId(),job.getTargetUserId()); chat.send(job.getRequesterId(),room.getId(),new ChatService.SendCommand("ai:"+job.getId(),ChatMessage.Type.AI_IMAGE,"미래의 나를 준비했어요.",stored.objectKey())); notifications.save(new Notification(job.getTargetUserId(),"AI_COMPLETED","새로운 미래 이미지가 도착했어요.")); publish("ai-generation:"+job.getId(),"ai_generation.succeeded",new JobView(job)); }); } catch(NonRetryable e){tx.executeWithoutResult(s->jobs.findById(claimed.getId()).ifPresent(j->j.block(e.getMessage())));} catch(ImageGenerationException e){tx.executeWithoutResult(s->jobs.findById(claimed.getId()).ifPresent(j->{if(e.retryable())j.retryOrFail(e.code());else j.block(e.code());}));} catch(RuntimeException e){tx.executeWithoutResult(s->jobs.findById(claimed.getId()).ifPresent(j->j.retryOrFail(code(e))));} return jobs.findById(claimed.getId()); }
- public Optional<AiGenerationJob> get(UUID requester,UUID jobId){return jobs.findById(jobId).filter(j->j.getRequesterId().equals(requester));}
- private void publish(String topic,String type,Object payload){try{realtime.publish(topic,type,payload);}catch(RuntimeException ignored){}}
- private String code(RuntimeException e){return e instanceof ImageGenerationException x?x.code():"AI_PROVIDER_ERROR";} private ApiException fail(HttpStatus s,String c){return new ApiException(s,c,c);} public record JobView(UUID id,AiGenerationJob.Status status,int attemptCount,String outputObjectKey,String failureCode){public JobView(AiGenerationJob j){this(j.getId(),j.getStatus(),j.getAttemptCount(),j.getOutputObjectKey(),j.getFailureCode());}} static class NonRetryable extends RuntimeException{NonRetryable(String m){super(m);}}
+
+import com.team2.wellness.common.api.ApiException;
+import com.team2.wellness.engagement.ai.domain.AiGenerationJob;
+import com.team2.wellness.engagement.ai.persistence.AiGenerationJobRepository;
+import com.team2.wellness.engagement.chat.application.ChatService;
+import com.team2.wellness.engagement.chat.domain.ChatMessage;
+import com.team2.wellness.engagement.notification.domain.Notification;
+import com.team2.wellness.engagement.notification.persistence.NotificationRepository;
+import com.team2.wellness.engagement.port.out.CoreAccessPort;
+import com.team2.wellness.engagement.port.out.ImageGenerationPort;
+import com.team2.wellness.engagement.port.out.MediaStoragePort;
+import com.team2.wellness.engagement.port.out.RealtimePublisherPort;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.Optional;
+import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
+
+@Service
+public class AiGenerationService {
+
+    private final AiGenerationJobRepository jobs;
+    private final CoreAccessPort core;
+    private final MediaStoragePort storage;
+    private final ImageGenerationPort images;
+    private final ChatService chat;
+    private final NotificationRepository notifications;
+    private final RealtimePublisherPort realtime;
+    private final SafeFuturePromptBuilder prompts;
+    private final TransactionTemplate tx;
+
+    public AiGenerationService(
+            AiGenerationJobRepository jobs,
+            CoreAccessPort core,
+            MediaStoragePort storage,
+            ImageGenerationPort images,
+            ChatService chat,
+            NotificationRepository notifications,
+            RealtimePublisherPort realtime,
+            SafeFuturePromptBuilder prompts,
+            TransactionTemplate tx
+    ) {
+        this.jobs = jobs;
+        this.core = core;
+        this.storage = storage;
+        this.images = images;
+        this.chat = chat;
+        this.notifications = notifications;
+        this.realtime = realtime;
+        this.prompts = prompts;
+        this.tx = tx;
+    }
+
+    public AiGenerationJob request(UUID requester, UUID target, UUID occurrence, String clientRequestId) {
+        return tx.execute(status -> {
+            Optional<AiGenerationJob> existing = jobs.findByRequesterIdAndClientRequestId(requester, clientRequestId);
+            if (existing.isPresent()) return existing.get();
+            if (!core.areAcceptedFriends(requester, target)) {
+                throw fail(HttpStatus.FORBIDDEN, "AI_REQUIRES_FRIENDSHIP");
+            }
+            if (!core.hasAiImageConsent(target)) {
+                throw fail(HttpStatus.FORBIDDEN, "AI_CONSENT_REQUIRED");
+            }
+            if (core.getMissedRoutineOccurrence(occurrence, target).isEmpty()) {
+                throw fail(HttpStatus.BAD_REQUEST, "MISSED_OCCURRENCE_REQUIRED");
+            }
+            Instant startOfDay = LocalDate.now(ZoneOffset.UTC).atStartOfDay().toInstant(ZoneOffset.UTC);
+            if (jobs.countByRequesterIdAndCreatedAtGreaterThanEqual(requester, startOfDay) >= 3) {
+                throw fail(HttpStatus.TOO_MANY_REQUESTS, "AI_DAILY_LIMIT");
+            }
+            return jobs.save(new AiGenerationJob(requester, target, occurrence, clientRequestId));
+        });
+    }
+
+    public Optional<AiGenerationJob> processNext() {
+        AiGenerationJob claimed = tx.execute(status -> jobs.findReady(Instant.now(), PageRequest.of(0, 1)).stream()
+                .filter(job -> job.claim(Instant.now()))
+                .findFirst()
+                .orElse(null));
+        if (claimed == null) return Optional.empty();
+
+        try {
+            CoreAccessPort.MissedRoutineOccurrence occurrence = core
+                    .getMissedRoutineOccurrence(claimed.getOccurrenceId(), claimed.getTargetUserId())
+                    .orElseThrow(() -> new NonRetryable("MISSED_OCCURRENCE_NO_LONGER_AVAILABLE"));
+            MediaStoragePort.StoredMedia face = storage.findFaceAsset(claimed.getTargetUserId())
+                    .orElseThrow(() -> new NonRetryable("FACE_ASSET_MISSING"));
+            ImageGenerationPort.ImageResult result = images.generate(new ImageGenerationPort.ImageCommand(
+                    prompts.build(occurrence),
+                    storage.read(face.objectKey()),
+                    face.contentType()
+            ));
+            MediaStoragePort.StoredMedia stored = storage.storeAiOutput(
+                    claimed.getTargetUserId(),
+                    result.bytes(),
+                    result.contentType()
+            );
+            tx.executeWithoutResult(status -> complete(claimed.getId(), occurrence, stored.objectKey()));
+        } catch (NonRetryable exception) {
+            tx.executeWithoutResult(status -> jobs.findById(claimed.getId())
+                    .ifPresent(job -> job.block(exception.getMessage())));
+        } catch (ImageGenerationException exception) {
+            tx.executeWithoutResult(status -> jobs.findById(claimed.getId()).ifPresent(job -> {
+                if (exception.retryable()) job.retryOrFail(exception.code());
+                else job.block(exception.code());
+            }));
+        } catch (RuntimeException exception) {
+            tx.executeWithoutResult(status -> jobs.findById(claimed.getId())
+                    .ifPresent(job -> job.retryOrFail(code(exception))));
+        }
+        return jobs.findById(claimed.getId());
+    }
+
+    private void complete(
+            UUID jobId,
+            CoreAccessPort.MissedRoutineOccurrence occurrence,
+            String outputObjectKey
+    ) {
+        AiGenerationJob job = jobs.findById(jobId).orElseThrow();
+        job.succeed(outputObjectKey);
+        var room = chat.createDirect(job.getRequesterId(), job.getTargetUserId());
+        String message = "%s 루틴을 최근 %d번 놓친 흐름을 반영한 미래 이미지예요."
+                .formatted(occurrence.routineTitle(), occurrence.missedCount());
+        chat.send(job.getRequesterId(), room.getId(), new ChatService.SendCommand(
+                "ai:" + job.getId(),
+                ChatMessage.Type.AI_IMAGE,
+                message,
+                outputObjectKey
+        ));
+        notifications.save(new Notification(
+                job.getTargetUserId(),
+                "AI_COMPLETED",
+                "새로운 미래 이미지가 도착했어요."
+        ));
+        publish("ai-generation:" + job.getId(), "ai_generation.succeeded", new JobView(job));
+    }
+
+    public Optional<AiGenerationJob> get(UUID requester, UUID jobId) {
+        return jobs.findById(jobId).filter(job -> job.getRequesterId().equals(requester));
+    }
+
+    private void publish(String topic, String type, Object payload) {
+        try {
+            realtime.publish(topic, type, payload);
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    private String code(RuntimeException exception) {
+        return exception instanceof ImageGenerationException imageException
+                ? imageException.code()
+                : "AI_PROVIDER_ERROR";
+    }
+
+    private ApiException fail(HttpStatus status, String code) {
+        return new ApiException(status, code, code);
+    }
+
+    public record JobView(
+            UUID id,
+            AiGenerationJob.Status status,
+            int attemptCount,
+            String outputObjectKey,
+            String failureCode
+    ) {
+        public JobView(AiGenerationJob job) {
+            this(job.getId(), job.getStatus(), job.getAttemptCount(), job.getOutputObjectKey(), job.getFailureCode());
+        }
+    }
+
+    static class NonRetryable extends RuntimeException {
+        NonRetryable(String message) {
+            super(message);
+        }
+    }
 }

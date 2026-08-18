@@ -15,6 +15,12 @@ public interface RoutineCompletionRepository extends JpaRepository<RoutineComple
 
     Optional<RoutineCompletion> findByRoutineIdAndCompletionDate(UUID routineId, LocalDate completionDate);
 
+    List<RoutineCompletion> findAllByRoutineIdAndCompletionDateBetween(
+            UUID routineId,
+            LocalDate start,
+            LocalDate end
+    );
+
     List<RoutineCompletion> findAllByUserIdAndCompletionDateBetweenOrderByCompletionDateAsc(
             UUID userId,
             LocalDate start,

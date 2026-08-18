@@ -3,12 +3,8 @@ package com.team2.wellness.infrastructure.core;
 import com.team2.wellness.core.friend.FriendshipService;
 import com.team2.wellness.core.group.GroupService;
 import com.team2.wellness.core.profile.ProfileRepository;
-import com.team2.wellness.core.routine.Routine;
-import com.team2.wellness.core.routine.RoutineCompletionRepository;
-import com.team2.wellness.core.routine.RoutineRepository;
+import com.team2.wellness.core.routine.RoutineService;
 import com.team2.wellness.engagement.port.out.CoreAccessPort;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,26 +15,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class CoreAccessAdapter implements CoreAccessPort {
 
-    private static final int MAX_MISSED_LOOKBACK_DAYS = 366;
-
     private final FriendshipService friendshipService;
     private final GroupService groupService;
     private final ProfileRepository profileRepository;
-    private final RoutineRepository routineRepository;
-    private final RoutineCompletionRepository completionRepository;
+    private final RoutineService routineService;
 
     public CoreAccessAdapter(
             FriendshipService friendshipService,
             GroupService groupService,
             ProfileRepository profileRepository,
-            RoutineRepository routineRepository,
-            RoutineCompletionRepository completionRepository
+            RoutineService routineService
     ) {
         this.friendshipService = friendshipService;
         this.groupService = groupService;
         this.profileRepository = profileRepository;
-        this.routineRepository = routineRepository;
-        this.completionRepository = completionRepository;
+        this.routineService = routineService;
     }
 
     @Override
@@ -58,9 +49,16 @@ public class CoreAccessAdapter implements CoreAccessPort {
 
     @Override
     public Optional<MissedRoutineOccurrence> getMissedRoutineOccurrence(UUID occurrenceId, UUID targetUserId) {
-        return routineRepository.findByIdAndOwnerId(occurrenceId, targetUserId)
-                .flatMap(routine -> mostRecentMissedDate(routine)
-                        .map(date -> new MissedRoutineOccurrence(occurrenceId, routine.getId(), targetUserId)));
+        return routineService.missedRoutine(targetUserId, occurrenceId)
+                .map(routine -> new MissedRoutineOccurrence(
+                        occurrenceId,
+                        routine.routineId(),
+                        targetUserId,
+                        routine.title(),
+                        routine.category(),
+                        routine.missedCount(),
+                        routine.missedDate()
+                ));
     }
 
     @Override
@@ -83,21 +81,5 @@ public class CoreAccessAdapter implements CoreAccessPort {
         return profileRepository.findById(userId)
                 .map(profile -> profile.isAiFaceConsent() && profile.getAvatarObjectPath() != null)
                 .orElse(false);
-    }
-
-    private Optional<LocalDate> mostRecentMissedDate(Routine routine) {
-        LocalDate today = LocalDate.now(ZoneId.of(routine.getTimezone()));
-        LocalDate earliest = today.minusDays(MAX_MISSED_LOOKBACK_DAYS);
-        if (routine.getStartDate().isAfter(earliest)) {
-            earliest = routine.getStartDate();
-        }
-
-        for (LocalDate date = today.minusDays(1); !date.isBefore(earliest); date = date.minusDays(1)) {
-            if (routine.isScheduledOn(date)
-                    && completionRepository.findByRoutineIdAndCompletionDate(routine.getId(), date).isEmpty()) {
-                return Optional.of(date);
-            }
-        }
-        return Optional.empty();
     }
 }

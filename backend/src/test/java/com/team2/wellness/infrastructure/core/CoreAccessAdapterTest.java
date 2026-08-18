@@ -8,13 +8,8 @@ import com.team2.wellness.core.friend.FriendshipService;
 import com.team2.wellness.core.group.GroupService;
 import com.team2.wellness.core.profile.Profile;
 import com.team2.wellness.core.profile.ProfileRepository;
-import com.team2.wellness.core.routine.Routine;
-import com.team2.wellness.core.routine.RoutineCompletionRepository;
-import com.team2.wellness.core.routine.RoutineRepository;
-import java.time.DayOfWeek;
+import com.team2.wellness.core.routine.RoutineService;
 import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.EnumSet;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,8 +20,7 @@ class CoreAccessAdapterTest {
     private FriendshipService friendships;
     private GroupService groups;
     private ProfileRepository profiles;
-    private RoutineRepository routines;
-    private RoutineCompletionRepository completions;
+    private RoutineService routines;
     private CoreAccessAdapter adapter;
 
     @BeforeEach
@@ -34,9 +28,8 @@ class CoreAccessAdapterTest {
         friendships = mock(FriendshipService.class);
         groups = mock(GroupService.class);
         profiles = mock(ProfileRepository.class);
-        routines = mock(RoutineRepository.class);
-        completions = mock(RoutineCompletionRepository.class);
-        adapter = new CoreAccessAdapter(friendships, groups, profiles, routines, completions);
+        routines = mock(RoutineService.class);
+        adapter = new CoreAccessAdapter(friendships, groups, profiles, routines);
     }
 
     @Test
@@ -55,24 +48,22 @@ class CoreAccessAdapterTest {
     @Test
     void routineIdRepresentsAnOccurrenceOnlyWhenAScheduledDayWasMissed() {
         UUID targetId = UUID.randomUUID();
-        Routine routine = new Routine(
-                targetId,
+        UUID routineId = UUID.randomUUID();
+        when(routines.missedRoutine(targetId, routineId)).thenReturn(Optional.of(new RoutineService.MissedRoutine(
+                routineId,
                 "매일 걷기",
                 "운동",
-                EnumSet.allOf(DayOfWeek.class),
-                LocalTime.of(20, 0),
-                "Asia/Seoul",
-                LocalDate.now().minusDays(10),
-                null
-        );
-        when(routines.findByIdAndOwnerId(routine.getId(), targetId)).thenReturn(Optional.of(routine));
-        when(completions.findByRoutineIdAndCompletionDate(routine.getId(), LocalDate.now().minusDays(1)))
-                .thenReturn(Optional.empty());
+                LocalDate.now().minusDays(1),
+                4
+        )));
 
-        assertThat(adapter.getMissedRoutineOccurrence(routine.getId(), targetId))
+        assertThat(adapter.getMissedRoutineOccurrence(routineId, targetId))
                 .hasValueSatisfying(occurrence -> {
-                    assertThat(occurrence.occurrenceId()).isEqualTo(routine.getId());
+                    assertThat(occurrence.occurrenceId()).isEqualTo(routineId);
                     assertThat(occurrence.targetUserId()).isEqualTo(targetId);
+                    assertThat(occurrence.routineTitle()).isEqualTo("매일 걷기");
+                    assertThat(occurrence.routineCategory()).isEqualTo("운동");
+                    assertThat(occurrence.missedCount()).isEqualTo(4);
                 });
     }
 }

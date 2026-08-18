@@ -23,7 +23,9 @@ export interface CalendarDayResponse {
 export interface MissedRoutineResponse {
   routineId: string;
   title: string;
+  category: string;
   missedDate: string;
+  missedCount: number;
 }
 
 const ALL_DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];

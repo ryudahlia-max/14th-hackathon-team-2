@@ -3,6 +3,7 @@ package com.team2.wellness.engagement.port.out;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDate;
 
 public interface CoreAccessPort {
     boolean areAcceptedFriends(UUID userId, UUID targetUserId);
@@ -13,7 +14,15 @@ public interface CoreAccessPort {
     Optional<GroupSummary> getGroupSummary(UUID groupId);
     boolean hasAiImageConsent(UUID userId);
 
-    record MissedRoutineOccurrence(UUID occurrenceId, UUID routineId, UUID targetUserId) { }
+    record MissedRoutineOccurrence(
+            UUID occurrenceId,
+            UUID routineId,
+            UUID targetUserId,
+            String routineTitle,
+            String routineCategory,
+            int missedCount,
+            LocalDate mostRecentMissedDate
+    ) { }
     record UserSummary(UUID userId, String nickname) { }
     record GroupSummary(UUID groupId, String name) { }
 }
