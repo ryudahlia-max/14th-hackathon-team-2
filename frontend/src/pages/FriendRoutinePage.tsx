@@ -82,7 +82,7 @@ function NotificationGroup({ name, count, timeAgo, routines }: RoutineGroup) {
           <span className="text-[#8b8b8b]">{timeAgo}</span>
         </p>
       </div>
-      <div className="flex flex-col w-full border-l border-[#6e6e6e] ml-12">
+      <div className="flex flex-col border-l border-[#6e6e6e] ml-12">
         {routines.map((routine, i) => (
           <div key={i} className="flex flex-col gap-1 w-full">
             <div className="flex items-center justify-between gap-2 pl-2 pr-4 w-full">
@@ -115,7 +115,7 @@ function ReceivedLikeGroupItem({ name, timeAgo, routines }: ReceivedLikeGroup) {
           <span className="text-[#8b8b8b]">{timeAgo}</span>
         </p>
       </div>
-      <div className="flex flex-col items-center gap-1 w-full border-l border-[#6e6e6e] ml-12">
+      <div className="flex flex-col items-center gap-1 border-l border-[#6e6e6e] ml-12">
         {routines.map((routine, i) => {
           const Icon = REACTION_ICONS[routine.reaction];
           return (
