@@ -1,3 +1,4 @@
+import Avatar from './Avatar';
 import type { Friend } from '../types';
 
 interface Props {
@@ -14,7 +15,7 @@ export default function FriendPill({ friend, isActive, onClick }: Props) {
         isActive ? 'bg-[#a2bfff]' : 'bg-white'
       }`}
     >
-      <div className="w-[33px] h-[33px] rounded-full bg-gray-300 overflow-hidden shrink-0" />
+      <Avatar friendId={friend.id} className="w-[33px] h-[33px]" />
       <span className={`text-[13px] font-normal whitespace-nowrap ${isActive ? 'text-white' : 'text-black'}`}>
         {friend.name}
       </span>

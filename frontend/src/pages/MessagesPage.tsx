@@ -2,19 +2,18 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import AppNavigationBar from '../components/AppNavigationBar';
+import Avatar from '../components/Avatar';
 import NewChatModal from '../components/NewChatModal';
-import { FRIENDS } from '../data/mockData';
+import { FRIENDS, ME_ID } from '../data/mockData';
 import { createGroupChat, getChats, getLastMessage, getOrCreateDirectChat } from '../data/chatStore';
-
-function formatDate(sentAt: string) {
-  const d = new Date(sentAt);
-  return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
-}
+import { formatRelativeTime } from '../utils/formatRelativeTime';
+import { useAutoRefresh } from '../utils/useAutoRefresh';
 
 export default function MessagesPage() {
   const navigate = useNavigate();
   const [chats, setChats] = useState(() => getChats());
   const [showNewChat, setShowNewChat] = useState(false);
+  useAutoRefresh(30000);
 
   const conversations = chats
     .map(chat => ({ chat, lastMessage: getLastMessage(chat.id) }))
@@ -29,8 +28,8 @@ export default function MessagesPage() {
     if (friendIds.length === 1 && !groupName) {
       chatId = getOrCreateDirectChat(friendIds[0]);
     } else {
-      const fallbackName = friendIds
-        .map(id => FRIENDS.find(f => f.id === id)?.name)
+      const me = FRIENDS.find(f => f.id === ME_ID)?.name;
+      const fallbackName = [me, ...friendIds.map(id => FRIENDS.find(f => f.id === id)?.name)]
         .filter(Boolean)
         .join(', ');
       chatId = createGroupChat(groupName || fallbackName, friendIds);
@@ -41,7 +40,7 @@ export default function MessagesPage() {
 
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="flex items-center justify-between px-4 pt-8 pb-4">
+      <div className="flex items-center justify-between px-7 pt-4 pb-4">
         <span className="text-lg font-bold">메시지</span>
         <button
           aria-label="새 채팅방"
@@ -57,14 +56,14 @@ export default function MessagesPage() {
           <button
             key={chat.id}
             onClick={() => navigate(`/messages/${chat.id}`)}
-            className="w-full flex items-center gap-3 px-4 py-3 border-b border-gray-100 text-left"
+            className="w-full flex items-center gap-3 px-7 py-3 border-b border-gray-100 text-left"
           >
-            <div className="w-12 h-12 rounded-full bg-gray-300 overflow-hidden shrink-0" />
+            <Avatar friendId={chat.isGroup ? '' : chat.participantIds[0]} className="w-12 h-12" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{chat.name}</span>
                 {lastMessage && (
-                  <span className="text-xs text-gray-400 shrink-0">{formatDate(lastMessage.sentAt)}</span>
+                  <span className="text-xs text-gray-400 shrink-0">{formatRelativeTime(lastMessage.sentAt)}</span>
                 )}
               </div>
               <p className="text-sm text-gray-500 truncate">

@@ -90,23 +90,24 @@ export default function WeekCalendar({
           const isSelected = dateStr === selectedDay;
 
           return (
-            <button
-              key={i}
-              onClick={() => onDaySelect(dateStr)}
-              className="flex flex-col items-center gap-1 py-1"
-            >
-              <RoutineIcon segments={segments} allComplete={allComplete} size={40} />
-              <span
-                className={`text-xs leading-none px-1.5 py-0.5 rounded-full ${isToday ? 'bg-gray-200 font-bold' : ''
-                  } ${i === 5
-                    ? 'text-blue-400'
-                    : i === 6
-                      ? 'text-red-400'
-                      : 'text-gray-700'
+            <button key={i} onClick={() => onDaySelect(dateStr)} className="flex flex-col items-center py-1">
+              <div
+                className={`flex flex-col items-center gap-1 px-1 py-1 rounded-full ${isSelected ? 'border border-[#6E6E6E]' : ''
                   }`}
               >
-                {d.getDate()}
-              </span>
+                <RoutineIcon segments={segments} allComplete={allComplete} size={40} />
+                <span
+                  className={`text-xs leading-none px-1.5 py-0.5 rounded-full ${isToday ? 'bg-gray-200 font-bold' : ''
+                    } ${i === 5
+                      ? 'text-blue-400'
+                      : i === 6
+                        ? 'text-red-400'
+                        : 'text-gray-700'
+                    }`}
+                >
+                  {d.getDate()}
+                </span>
+              </div>
             </button>
           );
         })}

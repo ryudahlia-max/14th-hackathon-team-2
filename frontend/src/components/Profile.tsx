@@ -1,4 +1,18 @@
-export default function Profile() {
+interface Props {
+  src?: string | null;
+}
+
+export default function Profile({ src }: Props) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt="프로필 사진"
+        className="h-20 w-20 shrink-0 rounded-full object-cover"
+      />
+    );
+  }
+
   return (
     <svg
       className="h-20 w-20 shrink-0"

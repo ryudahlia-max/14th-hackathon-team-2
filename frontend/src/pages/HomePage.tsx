@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Sun } from 'lucide-react';
 import FriendPill from '../components/FriendPill';
+import Avatar from '../components/Avatar';
 import MonthCalendar from '../components/MonthCalendar';
 import WeekCalendar from '../components/WeekCalendar';
 import AddRoutineModal from '../components/AddRoutineModal';
 import AppNavigationBar from '../components/AppNavigationBar';
-import { FRIENDS } from '../data/mockData';
+import { FRIENDS, ME_ID } from '../data/mockData';
+import { removeRoutineCompletionNotification, setRoutineCompletionNotification } from '../data/notificationStore';
 import type { Routine, MonthProgress, DayProgress } from '../types';
 
 type View = 'month' | 'week';
@@ -155,13 +157,16 @@ export default function HomePage() {
   }
 
   function handleToggleInstance(dateStr: string, routineId: string, instanceIndex: number) {
+    const current = (progressByFriend[selectedFriendId]?.[dateStr] ?? {})[routineId] ?? [];
+    const willCheck = !current.includes(instanceIndex);
+
     setProgressByFriend(prev => {
       const friendProgress = prev[selectedFriendId] ?? {};
       const dayProgress = friendProgress[dateStr] ?? {};
-      const current = dayProgress[routineId] ?? [];
-      const next = current.includes(instanceIndex)
-        ? current.filter(i => i !== instanceIndex)
-        : [...current, instanceIndex];
+      const prevList = dayProgress[routineId] ?? [];
+      const next = prevList.includes(instanceIndex)
+        ? prevList.filter(i => i !== instanceIndex)
+        : [...prevList, instanceIndex];
       return {
         ...prev,
         [selectedFriendId]: {
@@ -170,6 +175,23 @@ export default function HomePage() {
         },
       };
     });
+
+    // 내 루틴 체크는 알림 대상이 아님 (알림은 "친구가 완료했다"는 소식이어야 함)
+    if (selectedFriendId === ME_ID) return;
+
+    const routine = routines.find(r => r.id === routineId);
+    if (willCheck && routine) {
+      setRoutineCompletionNotification({
+        friendId: selectedFriendId,
+        friendName: selectedFriend.name,
+        routineId,
+        routineName: routine.name,
+        dateStr,
+        instanceIndex,
+      });
+    } else if (!willCheck) {
+      removeRoutineCompletionNotification(selectedFriendId, routineId, dateStr, instanceIndex);
+    }
   }
 
   const selectedFriend = FRIENDS.find(f => f.id === selectedFriendId) ?? FRIENDS[0];
@@ -214,7 +236,13 @@ export default function HomePage() {
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Friend pills */}
-      <div className="flex gap-3 overflow-x-auto px-4 pt-8 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div
+        onWheel={e => {
+          if (e.deltaY === 0) return;
+          e.currentTarget.scrollLeft += e.deltaY;
+        }}
+        className="flex gap-3 overflow-x-auto px-7 pt-4 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {FRIENDS.map(friend => (
           <FriendPill
             key={friend.id}
@@ -226,17 +254,13 @@ export default function HomePage() {
       </div>
 
       {/* Selected user profile */}
-      <div className="flex items-center gap-3 px-4 pt-5 pb-5">
-        <div className="w-12 h-12 rounded-full bg-gray-300 overflow-hidden">
-          {selectedFriend.profileImage && (
-            <img src={selectedFriend.profileImage} alt={selectedFriend.name} className="w-full h-full object-cover" />
-          )}
-        </div>
+      <div className="flex items-center gap-3 px-7 pt-5 pb-5">
+        <Avatar friendId={selectedFriendId} className="w-12 h-12" />
         <span className="text-base font-medium">{selectedFriend.name}</span>
       </div>
 
       {/* Calendar header */}
-      <div className="flex items-center justify-between px-4 py-2 mb-3">
+      <div className="flex items-center justify-between px-7 py-2 mb-3">
         <div className="flex items-center gap-2">
           <Sun size={18} className="text-[#a2bfff]" />
           <span className="font-bold text-lg">{headerLabel}</span>
@@ -258,7 +282,7 @@ export default function HomePage() {
       </div>
 
       {/* Calendar */}
-      <div className="flex-1 overflow-y-auto px-4 pb-2">
+      <div className="flex-1 overflow-y-auto px-7 pb-2">
         {view === 'month' ? (
           <MonthCalendar
             year={year}

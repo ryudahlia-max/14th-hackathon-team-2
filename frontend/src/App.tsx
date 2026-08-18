@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './auth/AuthContext';
 import HomePage from './pages/HomePage';
 import FriendRoutinePage from './pages/FriendRoutinePage';
 import {
@@ -14,6 +15,7 @@ import ChatRoomPage from './pages/ChatRoomPage';
 import AiImageGenPage from './pages/AiImageGenPage';
 import UserPage from './pages/UserPage';
 import FriendManagementPage from './pages/FriendManagementPage';
+import LoginPage from './pages/LoginPage';
 
 export default function App() {
   // 알림 페이지가 라우트 전환으로 언마운트/재마운트되어도 남긴 반응이 유지되도록,
@@ -53,25 +55,28 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
-      <div className="flex justify-center bg-gray-100 min-h-svh">
-        <div className="w-full max-w-[393px] bg-white flex flex-col h-svh overflow-hidden">
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route
-              path="/notifications"
-              element={
-                <FriendRoutinePage reactions={reactions} onSelectReaction={handleSelectReaction} />
-              }
-            />
-            <Route path="/messages" element={<MessagesPage />} />
-            <Route path="/messages/:chatId" element={<ChatRoomPage />} />
-            <Route path="/messages/:chatId/ai-image" element={<AiImageGenPage />} />
-            <Route path="/profile" element={<UserPage />} />
-            <Route path="/friends" element={<FriendManagementPage />} />
-          </Routes>
+    <AuthProvider>
+      <BrowserRouter>
+        <div className="flex justify-center bg-gray-100 min-h-svh">
+          <div className="w-full max-w-[393px] bg-white flex flex-col h-svh overflow-hidden">
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route
+                path="/notifications"
+                element={
+                  <FriendRoutinePage reactions={reactions} onSelectReaction={handleSelectReaction} />
+                }
+              />
+              <Route path="/messages" element={<MessagesPage />} />
+              <Route path="/messages/:chatId" element={<ChatRoomPage />} />
+              <Route path="/messages/:chatId/ai-image" element={<AiImageGenPage />} />
+              <Route path="/profile" element={<UserPage />} />
+              <Route path="/friends" element={<FriendManagementPage />} />
+              <Route path="/login" element={<LoginPage />} />
+            </Routes>
+          </div>
         </div>
-      </div>
-    </BrowserRouter>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

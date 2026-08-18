@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Plus, Image as ImageIcon, Camera, Smile } from 'lucide-react';
-import { addMessage, getChat, getChatMessages } from '../data/chatStore';
+import { ChevronLeft, LogOut, Plus, Image as ImageIcon, Camera, Smile } from 'lucide-react';
+import { addMessage, deleteChat, getChat, getChatMessages } from '../data/chatStore';
 
 function formatTime(sentAt: string) {
   const d = new Date(sentAt);
@@ -16,6 +16,7 @@ export default function ChatRoomPage() {
   const [messages, setMessages] = useState(() => (chatId ? getChatMessages(chatId) : []));
   const [text, setText] = useState('');
   const [showAttach, setShowAttach] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,6 +48,12 @@ export default function ChatRoomPage() {
     setShowAttach(false);
   }
 
+  function handleLeaveChat() {
+    if (!chatId) return;
+    deleteChat(chatId);
+    navigate('/messages');
+  }
+
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
@@ -55,7 +62,9 @@ export default function ChatRoomPage() {
           <ChevronLeft size={22} color="#333" />
         </button>
         <span className="text-base font-bold">{chat.name}</span>
-        <div className="w-9 h-9 rounded-full bg-gray-300 shrink-0" />
+        <button onClick={() => setShowLeaveConfirm(true)} aria-label="채팅방 나가기">
+          <LogOut size={20} color="#6e6e6e" />
+        </button>
       </div>
 
       {/* Messages */}
@@ -132,6 +141,30 @@ export default function ChatRoomPage() {
             </div>
             <span className="text-xs text-gray-500">AI 이미지</span>
           </button>
+        </div>
+      )}
+
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowLeaveConfirm(false)} />
+          <div className="relative bg-white rounded-t-2xl w-full max-w-[393px] px-6 pt-6 pb-10">
+            <h2 className="text-lg font-bold mb-2">채팅방을 나가시겠어요?</h2>
+            <p className="text-sm text-gray-500 mb-6">나가면 대화 내용이 모두 삭제되고 목록에서 사라져요.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLeaveConfirm(false)}
+                className="flex-1 py-3 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleLeaveChat}
+                className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-semibold"
+              >
+                나가기
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

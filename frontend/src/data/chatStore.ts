@@ -83,6 +83,11 @@ export function createGroupChat(name: string, friendIds: string[]): string {
   return chat.id;
 }
 
+export function deleteChat(chatId: string) {
+  save(CHATS_KEY, getChats().filter(c => c.id !== chatId));
+  save(MESSAGES_KEY, getMessages().filter(m => m.chatId !== chatId));
+}
+
 export function addMessage(chatId: string, payload: { text?: string; imageUrl?: string; fromMe: boolean }): Message {
   const messages = getMessages();
   const msg: Message = {
