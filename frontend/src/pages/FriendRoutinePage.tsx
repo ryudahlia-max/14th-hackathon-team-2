@@ -205,7 +205,7 @@ function NotificationGroup({
           <span className="text-[#8b8b8b]">{formatRelativeTime(latestAt)}</span>
         </p>
       </div>
-      <div className="flex flex-col w-full border-l border-[#6e6e6e] ml-12">
+      <div className="flex flex-col border-l border-[#6e6e6e] ml-12">
         {routines.map((routine) => (
           <RoutineRow
             key={routine.id}
@@ -269,7 +269,7 @@ export default function NotificationPage({ reactions, onSelectReaction }: Notifi
 
   return (
     <div className="flex flex-col h-full bg-white">
-      <div className="flex-1 overflow-y-auto flex w-full flex-col items-start gap-4 px-7 pt-4">
+      <div className="flex-1 overflow-y-auto flex w-full flex-col items-start gap-4 pl-7 pr-4 pt-4">
         <p className="text-lg font-bold text-black">알림</p>
         <div className="flex gap-2.5 items-center">
           <button
