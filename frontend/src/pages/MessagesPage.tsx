@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import AppNavigationBar from '../components/AppNavigationBar';
+import Avatar from '../components/Avatar';
 import NewChatModal from '../components/NewChatModal';
 import { FRIENDS, ME_ID } from '../data/mockData';
 import { createGroupChat, getChats, getLastMessage, getOrCreateDirectChat } from '../data/chatStore';
@@ -57,7 +58,7 @@ export default function MessagesPage() {
             onClick={() => navigate(`/messages/${chat.id}`)}
             className="w-full flex items-center gap-3 px-7 py-3 border-b border-gray-100 text-left"
           >
-            <div className="w-12 h-12 rounded-full bg-gray-300 overflow-hidden shrink-0" />
+            <Avatar friendId={chat.isGroup ? '' : chat.participantIds[0]} className="w-12 h-12" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{chat.name}</span>
