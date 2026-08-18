@@ -6,6 +6,13 @@ export function formatRelativeTime(iso: string): string {
   const diffHour = Math.floor(diffMin / 60);
   if (diffHour < 23) return `${diffHour}시간 전`;
 
-  const d = new Date(iso);
-  return `${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+  const target = new Date(iso);
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTarget = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  const dayDiff = Math.round((startOfToday.getTime() - startOfTarget.getTime()) / (24 * 60 * 60 * 1000));
+
+  if (dayDiff === 1) return '어제';
+
+  return `${target.getMonth() + 1}월 ${target.getDate()}일`;
 }
