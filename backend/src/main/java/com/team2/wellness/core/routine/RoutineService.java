@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashSet;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -66,6 +67,10 @@ public class RoutineService {
         return routineRepository.findAllByOwnerIdOrderByCreatedAtDesc(userId);
     }
 
+    public void delete(UUID userId, UUID routineId) {
+        routineRepository.delete(ownedRoutine(userId, routineId));
+    }
+
     public RoutineCompletion complete(
             UUID userId,
             UUID routineId,
@@ -95,19 +100,44 @@ public class RoutineService {
         List<Routine> routines = list(userId);
         LocalDate start = month.atDay(1);
         LocalDate end = month.atEndOfMonth();
-        Map<LocalDate, Long> completedCounts = new HashMap<>();
+        Map<LocalDate, Set<UUID>> completedRoutineIds = new HashMap<>();
         completionRepository.findAllByUserIdAndCompletionDateBetweenOrderByCompletionDateAsc(userId, start, end)
-                .forEach(completion -> completedCounts.merge(completion.getCompletionDate(), 1L, Long::sum));
+                .forEach(completion -> completedRoutineIds
+                        .computeIfAbsent(completion.getCompletionDate(), ignored -> new HashSet<>())
+                        .add(completion.getRoutineId()));
 
         List<CalendarDay> days = new ArrayList<>();
         for (LocalDate date = start; !date.isAfter(end); date = date.plusDays(1)) {
             LocalDate currentDate = date;
             long scheduled = routines.stream().filter(routine -> routine.isScheduledOn(currentDate)).count();
-            long completed = completedCounts.getOrDefault(currentDate, 0L);
+            Set<UUID> completedIds = completedRoutineIds.getOrDefault(currentDate, Set.of());
+            long completed = completedIds.size();
             double rate = scheduled == 0 ? 0 : Math.round((completed * 10000.0) / scheduled) / 100.0;
-            days.add(new CalendarDay(currentDate, scheduled, completed, rate));
+            days.add(new CalendarDay(currentDate, scheduled, completed, rate, List.copyOf(completedIds)));
         }
         return days;
+    }
+
+    public void uncomplete(UUID userId, UUID routineId, LocalDate date) {
+        ownedRoutine(userId, routineId);
+        completionRepository.findByRoutineIdAndCompletionDate(routineId, date)
+                .ifPresent(completionRepository::delete);
+    }
+
+    public List<MissedRoutine> missedRoutines(UUID ownerId) {
+        List<MissedRoutine> result = new ArrayList<>();
+        for (Routine routine : list(ownerId)) {
+            LocalDate today = LocalDate.now(ZoneId.of(routine.getTimezone()));
+            LocalDate earliest = today.minusDays(366);
+            for (LocalDate date = today.minusDays(1); !date.isBefore(earliest); date = date.minusDays(1)) {
+                if (routine.isScheduledOn(date)
+                        && completionRepository.findByRoutineIdAndCompletionDate(routine.getId(), date).isEmpty()) {
+                    result.add(new MissedRoutine(routine.getId(), routine.getTitle(), date));
+                    break;
+                }
+            }
+        }
+        return result;
     }
 
     public Routine ownedRoutine(UUID userId, UUID routineId) {
@@ -144,6 +174,15 @@ public class RoutineService {
     ) {
     }
 
-    public record CalendarDay(LocalDate date, long scheduledCount, long completedCount, double completionRate) {
+    public record CalendarDay(
+            LocalDate date,
+            long scheduledCount,
+            long completedCount,
+            double completionRate,
+            List<UUID> completedRoutineIds
+    ) {
+    }
+
+    public record MissedRoutine(UUID routineId, String title, LocalDate missedDate) {
     }
 }

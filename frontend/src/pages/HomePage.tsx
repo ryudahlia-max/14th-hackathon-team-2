@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Sun } from 'lucide-react';
 import FriendPill from '../components/FriendPill';
 import Avatar from '../components/Avatar';
@@ -6,290 +6,189 @@ import MonthCalendar from '../components/MonthCalendar';
 import WeekCalendar from '../components/WeekCalendar';
 import AddRoutineModal from '../components/AddRoutineModal';
 import AppNavigationBar from '../components/AppNavigationBar';
-import { FRIENDS, ME_ID } from '../data/mockData';
-import { removeRoutineCompletionNotification, setRoutineCompletionNotification } from '../data/notificationStore';
-import type { Routine, MonthProgress, DayProgress } from '../types';
+import { getFriends } from '../api/friend';
+import { getProfile } from '../api/profile';
+import {
+  completeRoutine,
+  createRoutine,
+  deleteRoutine,
+  getCalendar,
+  getFriendCalendar,
+  getFriendRoutines,
+  getRoutines,
+  uncompleteRoutine,
+  updateRoutine,
+  type RoutineResponse,
+} from '../api/routine';
+import type { Friend, Routine, MonthProgress } from '../types';
 
 type View = 'month' | 'week';
 
-function getMonday(date: Date): Date {
-  const d = new Date(date);
-  const day = d.getDay();
-  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-  return d;
+function getMonday(date: Date) {
+  const result = new Date(date);
+  const day = result.getDay();
+  result.setDate(result.getDate() - (day === 0 ? 6 : day - 1));
+  return result;
 }
 
-// 해당 달(labelYear/labelMonth)로 표기될 때의 주차 계산
-// 달의 첫 날을 포함하는 교차주가 이 달로 표기되면 그 주가 1주차이므로 이후 주차를 +1
-function weekOfMonth(weekStart: Date, labelYear: number, labelMonth: number): number {
-  const firstOfMonth = new Date(labelYear, labelMonth, 1);
-  const firstDow = firstOfMonth.getDay();
-  const daysBack = firstDow === 0 ? 6 : firstDow - 1;
-  const firstMonday = new Date(labelYear, labelMonth, 1 - daysBack);
-  // 달 시작 교차주(첫 번째 월요일이 이전 달에 있는 경우)에서 이 달이 차지하는 날 수
-  const daysInOpeningWeek = firstDow === 0 ? 1 : firstDow === 1 ? 0 : 8 - firstDow;
-  // 교차주가 이 달로 표기되면(≥4일) 그 주가 이미 1주차를 썼으므로 weekIndex+1
-  const diffMs = weekStart.getTime() - firstMonday.getTime();
-  const weekIndex = Math.round(diffMs / (7 * 24 * 60 * 60 * 1000));
-  // 교차주가 없거나(1일=월요일) 교차주가 이 달로 표기된 경우: weekIndex+1
-  // 교차주가 이전 달로 표기된 경우(3일 이하): 첫 월요일이 weekIndex=1 → 그대로
-  return (daysInOpeningWeek === 0 || daysInOpeningWeek >= 4) ? weekIndex + 1 : weekIndex;
+function toDateStr(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-function getWeekLabel(weekStart: Date): { year: number; month: number; week: number } {
-  const sunday = new Date(weekStart);
-  sunday.setDate(weekStart.getDate() + 6);
-
-  const sYear = weekStart.getFullYear();
-  const sMonth = weekStart.getMonth();
-  const eYear = sunday.getFullYear();
-  const eMonth = sunday.getMonth();
-
-  if (sYear === eYear && sMonth === eMonth) {
-    return { year: sYear, month: sMonth, week: weekOfMonth(weekStart, sYear, sMonth) };
-  }
-
-  const lastDayOfStartMonth = new Date(sYear, sMonth + 1, 0).getDate();
-  const daysInStartMonth = lastDayOfStartMonth - weekStart.getDate() + 1;
-
-  if (daysInStartMonth >= 4) {
-    return { year: sYear, month: sMonth, week: weekOfMonth(weekStart, sYear, sMonth) };
-  } else {
-    return { year: eYear, month: eMonth, week: 1 };
-  }
+function monthKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function toDateStr(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function colorOf(category: string) {
+  return /^#[0-9A-F]{6}$/i.test(category) ? category : '#60A5FA';
 }
 
-const ROUTINES_KEY = 'routine-app:routines';
-const PROGRESS_KEY = 'routine-app:progress';
-
-function loadFromStorage<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-// 예전엔 루틴별 진행도를 누적 카운트(number)로 저장했던 데이터가 남아있을 수 있어
-// 완료된 인스턴스 인덱스 배열(number[])로 변환해준다.
-function loadProgressFromStorage(): Record<string, MonthProgress> {
-  const raw = loadFromStorage<Record<string, Record<string, Record<string, unknown>>>>(PROGRESS_KEY, {});
-  const migrated: Record<string, MonthProgress> = {};
-  for (const [friendId, monthProgress] of Object.entries(raw)) {
-    const days: MonthProgress = {};
-    for (const [dateStr, dayProgress] of Object.entries(monthProgress)) {
-      const normalizedDay: DayProgress = {};
-      for (const [routineId, value] of Object.entries(dayProgress)) {
-        normalizedDay[routineId] = Array.isArray(value)
-          ? (value as number[])
-          : Array.from({ length: Number(value) || 0 }, (_, i) => i);
-      }
-      days[dateStr] = normalizedDay;
-    }
-    migrated[friendId] = days;
-  }
-  return migrated;
+function toRoutine(response: RoutineResponse): Routine {
+  return {
+    id: response.id,
+    name: response.title,
+    color: colorOf(response.category),
+    totalCount: 1,
+    api: response,
+  };
 }
 
 export default function HomePage() {
-  const [selectedFriendId, setSelectedFriendId] = useState(FRIENDS[0].id);
+  const [people, setPeople] = useState<Friend[]>([]);
+  const [meId, setMeId] = useState('');
+  const [selectedFriendId, setSelectedFriendId] = useState('');
   const [view, setView] = useState<View>('month');
-  const [viewDate, setViewDate] = useState(new Date(2026, 7, 1));
-  const [weekStart, setWeekStart] = useState(() => getMonday(new Date(2026, 7, 15)));
-  const [routinesByFriend, setRoutinesByFriend] = useState<Record<string, Routine[]>>(() =>
-    loadFromStorage(ROUTINES_KEY, {})
-  );
-  const [progressByFriend, setProgressByFriend] = useState<Record<string, MonthProgress>>(loadProgressFromStorage);
+  const [viewDate, setViewDate] = useState(() => new Date());
+  const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
+  const [routines, setRoutines] = useState<Routine[]>([]);
+  const [progress, setProgress] = useState<MonthProgress>({});
   const [selectedDay, setSelectedDay] = useState(() => toDateStr(new Date()));
   const [showRoutineModal, setShowRoutineModal] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    localStorage.setItem(ROUTINES_KEY, JSON.stringify(routinesByFriend));
-  }, [routinesByFriend]);
+    Promise.all([getProfile(), getFriends()])
+      .then(([profile, friends]) => {
+        const allPeople = [
+          { id: profile.id, name: profile.nickname, profileImage: profile.avatarUrl ?? undefined },
+          ...friends.map(friend => ({ id: friend.id, name: friend.name, profileImage: friend.avatarUrl })),
+        ];
+        setPeople(allPeople);
+        setMeId(profile.id);
+        setSelectedFriendId(profile.id);
+      })
+      .catch(() => setError('프로필과 친구 목록을 불러오지 못했습니다.'));
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify(progressByFriend));
-  }, [progressByFriend]);
-
-  const routines = routinesByFriend[selectedFriendId] ?? [];
-  const progress = progressByFriend[selectedFriendId] ?? {};
-
-  function handleSaveRoutine(name: string, count: number, color: string) {
-    setRoutinesByFriend(prev => {
-      const friendRoutines = prev[selectedFriendId] ?? [];
-      const next = editingRoutine
-        ? friendRoutines.map(r => (r.id === editingRoutine.id ? { ...r, name, color, totalCount: count } : r))
-        : [...friendRoutines, { id: `r-${Date.now()}`, name, color, totalCount: count }];
-      return { ...prev, [selectedFriendId]: next };
-    });
-  }
-
-  function handleDeleteRoutine(routineId: string) {
-    setRoutinesByFriend(prev => ({
-      ...prev,
-      [selectedFriendId]: (prev[selectedFriendId] ?? []).filter(r => r.id !== routineId),
-    }));
-    setProgressByFriend(prev => {
-      const friendProgress = prev[selectedFriendId] ?? {};
-      const nextProgress: MonthProgress = {};
-      for (const [dateStr, dayProgress] of Object.entries(friendProgress)) {
-        const { [routineId]: _removed, ...rest } = dayProgress;
-        nextProgress[dateStr] = rest;
+  const loadData = useCallback(async () => {
+    if (!selectedFriendId || !meId) return;
+    setError(null);
+    try {
+      if (selectedFriendId === meId) {
+        const [routineResponses, calendar] = await Promise.all([
+          getRoutines(),
+          getCalendar(monthKey(view === 'month' ? viewDate : weekStart)),
+        ]);
+        setRoutines(routineResponses.map(toRoutine));
+        const nextProgress: MonthProgress = {};
+        for (const day of calendar) {
+          nextProgress[day.date] = Object.fromEntries(day.completedRoutineIds.map(id => [id, [0]]));
+        }
+        setProgress(nextProgress);
+      } else {
+        const [routineResponses, calendar] = await Promise.all([
+          getFriendRoutines(selectedFriendId),
+          getFriendCalendar(selectedFriendId, monthKey(view === 'month' ? viewDate : weekStart)),
+        ]);
+        const nextProgress: MonthProgress = {};
+        for (const day of calendar) {
+          nextProgress[day.date] = Object.fromEntries(day.completedRoutineIds.map(id => [id, [0]]));
+        }
+        setRoutines(routineResponses.map(toRoutine));
+        setProgress(nextProgress);
       }
-      return { ...prev, [selectedFriendId]: nextProgress };
-    });
-  }
+    } catch (loadError) {
+      console.error(loadError);
+      setError('루틴 정보를 불러오지 못했습니다.');
+    }
+  }, [meId, selectedFriendId, view, viewDate, weekStart]);
 
-  function openAddRoutine() {
-    setEditingRoutine(null);
-    setShowRoutineModal(true);
-  }
+  useEffect(() => { void loadData(); }, [loadData]);
 
-  function openEditRoutine(routine: Routine) {
-    setEditingRoutine(routine);
-    setShowRoutineModal(true);
-  }
-
-  function handleToggleInstance(dateStr: string, routineId: string, instanceIndex: number) {
-    const current = (progressByFriend[selectedFriendId]?.[dateStr] ?? {})[routineId] ?? [];
-    const willCheck = !current.includes(instanceIndex);
-
-    setProgressByFriend(prev => {
-      const friendProgress = prev[selectedFriendId] ?? {};
-      const dayProgress = friendProgress[dateStr] ?? {};
-      const prevList = dayProgress[routineId] ?? [];
-      const next = prevList.includes(instanceIndex)
-        ? prevList.filter(i => i !== instanceIndex)
-        : [...prevList, instanceIndex];
-      return {
-        ...prev,
-        [selectedFriendId]: {
-          ...friendProgress,
-          [dateStr]: { ...dayProgress, [routineId]: next },
-        },
-      };
-    });
-
-    // 내 루틴 체크는 알림 대상이 아님 (알림은 "친구가 완료했다"는 소식이어야 함)
-    if (selectedFriendId === ME_ID) return;
-
-    const routine = routines.find(r => r.id === routineId);
-    if (willCheck && routine) {
-      setRoutineCompletionNotification({
-        friendId: selectedFriendId,
-        friendName: selectedFriend.name,
-        routineId,
-        routineName: routine.name,
-        dateStr,
-        instanceIndex,
-      });
-    } else if (!willCheck) {
-      removeRoutineCompletionNotification(selectedFriendId, routineId, dateStr, instanceIndex);
+  async function handleSaveRoutine(name: string, color: string) {
+    try {
+      if (editingRoutine?.api) await updateRoutine(editingRoutine.api, name, color);
+      else await createRoutine(name, color);
+      await loadData();
+    } catch (saveError) {
+      console.error(saveError);
+      setError('루틴을 저장하지 못했습니다.');
     }
   }
 
-  const selectedFriend = FRIENDS.find(f => f.id === selectedFriendId) ?? FRIENDS[0];
-  const year = view === 'month' ? viewDate.getFullYear() : weekStart.getFullYear();
-  const month = view === 'month' ? viewDate.getMonth() : weekStart.getMonth();
-
-  function switchToWeek() {
-    const today = new Date();
-    const inSameMonth =
-      today.getFullYear() === viewDate.getFullYear() && today.getMonth() === viewDate.getMonth();
-    setWeekStart(getMonday(inSameMonth ? today : new Date(viewDate.getFullYear(), viewDate.getMonth(), 10)));
-    setView('week');
-  }
-
-  function switchToMonth() {
-    setViewDate(new Date(weekStart.getFullYear(), weekStart.getMonth(), 1));
-    setView('month');
-  }
-
-  function prevPeriod() {
-    if (view === 'month') {
-      setViewDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
-    } else {
-      setWeekStart(d => { const next = new Date(d); next.setDate(d.getDate() - 7); return next; });
+  async function handleDeleteRoutine(id: string) {
+    try {
+      await deleteRoutine(id);
+      await loadData();
+    } catch (deleteError) {
+      console.error(deleteError);
+      setError('루틴을 삭제하지 못했습니다.');
     }
   }
 
-  function nextPeriod() {
-    if (view === 'month') {
-      setViewDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
-    } else {
-      setWeekStart(d => { const next = new Date(d); next.setDate(d.getDate() + 7); return next; });
+  async function handleToggle(date: string, routineId: string) {
+    if (selectedFriendId !== meId) return;
+    const checked = (progress[date]?.[routineId] ?? []).includes(0);
+    setProgress(previous => ({
+      ...previous,
+      [date]: { ...previous[date], [routineId]: checked ? [] : [0] },
+    }));
+    try {
+      if (checked) await uncompleteRoutine(routineId, date);
+      else await completeRoutine(routineId, date);
+    } catch (toggleError) {
+      console.error(toggleError);
+      await loadData();
+      setError('완료 상태를 변경하지 못했습니다.');
     }
   }
 
-  const weekLabel = view === 'week' ? getWeekLabel(weekStart) : null;
-  const headerLabel =
-    view === 'month'
-      ? `${year}년 ${month + 1}월`
-      : `${weekLabel!.year}년 ${weekLabel!.month + 1}월 ${weekLabel!.week}주차`;
+  const selectedFriend = useMemo(
+    () => people.find(person => person.id === selectedFriendId) ?? people[0],
+    [people, selectedFriendId],
+  );
+  const displayDate = view === 'month' ? viewDate : weekStart;
+  const headerLabel = view === 'month'
+    ? `${displayDate.getFullYear()}년 ${displayDate.getMonth() + 1}월`
+    : `${weekStart.getFullYear()}년 ${weekStart.getMonth() + 1}월 ${Math.ceil(weekStart.getDate() / 7)}주차`;
+  const isMine = selectedFriendId === meId;
 
   return (
     <div className="flex flex-col h-full bg-white">
-      {/* Friend pills */}
-      <div
-        onWheel={e => {
-          if (e.deltaY === 0) return;
-          e.currentTarget.scrollLeft += e.deltaY;
-        }}
-        className="flex gap-3 overflow-x-auto px-7 pt-4 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {FRIENDS.map(friend => (
-          <FriendPill
-            key={friend.id}
-            friend={friend}
-            isActive={friend.id === selectedFriendId}
-            onClick={() => setSelectedFriendId(friend.id)}
-          />
+      <div className="flex gap-3 overflow-x-auto px-7 pt-4 pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {people.map(person => (
+          <FriendPill key={person.id} friend={person} isActive={person.id === selectedFriendId} onClick={() => setSelectedFriendId(person.id)} />
         ))}
       </div>
-
-      {/* Selected user profile */}
-      <div className="flex items-center gap-3 px-7 pt-5 pb-5">
-        <Avatar friendId={selectedFriendId} className="w-12 h-12" />
-        <span className="text-base font-medium">{selectedFriend.name}</span>
-      </div>
-
-      {/* Calendar header */}
+      {selectedFriend && (
+        <div className="flex items-center gap-3 px-7 pt-5 pb-5">
+          <Avatar friendId={selectedFriend.id} src={selectedFriend.profileImage} className="w-12 h-12" />
+          <span className="text-base font-medium">{selectedFriend.name}</span>
+        </div>
+      )}
       <div className="flex items-center justify-between px-7 py-2 mb-3">
+        <div className="flex items-center gap-2"><Sun size={18} className="text-[#a2bfff]" /><span className="font-bold text-lg">{headerLabel}</span></div>
         <div className="flex items-center gap-2">
-          <Sun size={18} className="text-[#a2bfff]" />
-          <span className="font-bold text-lg">{headerLabel}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={view === 'month' ? switchToWeek : switchToMonth}
-            className="px-3 py-1.5 rounded-full border border-[#6e6e6e] text-sm font-medium"
-          >
-            {view === 'month' ? '주' : '월'}
-          </button>
-          <button onClick={prevPeriod} className="px-3 py-1.5 rounded-full border border-[#6e6e6e] text-sm font-medium">
-            {'<'}
-          </button>
-          <button onClick={nextPeriod} className="px-3 py-1.5 rounded-full border border-[#6e6e6e] text-sm font-medium">
-            {'>'}
-          </button>
+          <button onClick={() => setView(current => current === 'month' ? 'week' : 'month')} className="px-3 py-1.5 rounded-full border border-[#6e6e6e] text-sm">{view === 'month' ? '주' : '월'}</button>
+          <button onClick={() => view === 'month' ? setViewDate(date => new Date(date.getFullYear(), date.getMonth() - 1, 1)) : setWeekStart(date => new Date(date.getFullYear(), date.getMonth(), date.getDate() - 7))} className="px-3 py-1.5 rounded-full border border-[#6e6e6e] text-sm">{'<'}</button>
+          <button onClick={() => view === 'month' ? setViewDate(date => new Date(date.getFullYear(), date.getMonth() + 1, 1)) : setWeekStart(date => new Date(date.getFullYear(), date.getMonth(), date.getDate() + 7))} className="px-3 py-1.5 rounded-full border border-[#6e6e6e] text-sm">{'>'}</button>
         </div>
       </div>
-
-      {/* Calendar */}
+      {error && <p className="px-7 pb-2 text-xs text-red-500">{error}</p>}
       <div className="flex-1 overflow-y-auto px-7 pb-2">
         {view === 'month' ? (
-          <MonthCalendar
-            year={year}
-            month={month}
-            routines={routines}
-            progress={progress}
-          />
+          <MonthCalendar year={viewDate.getFullYear()} month={viewDate.getMonth()} routines={routines} progress={progress} />
         ) : (
           <WeekCalendar
             weekStart={weekStart}
@@ -297,20 +196,19 @@ export default function HomePage() {
             progress={progress}
             selectedDay={selectedDay}
             onDaySelect={setSelectedDay}
-            onToggleInstance={handleToggleInstance}
-            onAddRoutine={openAddRoutine}
-            onEditRoutine={openEditRoutine}
+            onToggleInstance={(date, id) => void handleToggle(date, id)}
+            onAddRoutine={() => { setEditingRoutine(null); setShowRoutineModal(true); }}
+            onEditRoutine={routine => { setEditingRoutine(routine); setShowRoutineModal(true); }}
+            readOnly={!isMine}
           />
         )}
       </div>
-
       <AppNavigationBar />
-
-      {showRoutineModal && (
+      {showRoutineModal && isMine && (
         <AddRoutineModal
           initial={editingRoutine ?? undefined}
           onSave={handleSaveRoutine}
-          onDelete={editingRoutine ? () => handleDeleteRoutine(editingRoutine.id) : undefined}
+          onDelete={editingRoutine ? () => void handleDeleteRoutine(editingRoutine.id) : undefined}
           onClose={() => setShowRoutineModal(false)}
         />
       )}

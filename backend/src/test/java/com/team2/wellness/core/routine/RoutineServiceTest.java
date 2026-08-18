@@ -101,6 +101,32 @@ class RoutineServiceTest {
         assertThat(day.scheduledCount()).isEqualTo(1);
         assertThat(day.completedCount()).isEqualTo(1);
         assertThat(day.completionRate()).isEqualTo(100.0);
+        assertThat(day.completedRoutineIds()).containsExactly(routine.getId());
+    }
+
+    @Test
+    void ownerCanDeleteRoutine() {
+        UUID userId = UUID.randomUUID();
+        Routine routine = dailyRoutine(userId);
+        when(routineRepository.findByIdAndOwnerId(routine.getId(), userId)).thenReturn(Optional.of(routine));
+
+        service.delete(userId, routine.getId());
+
+        verify(routineRepository).delete(routine);
+    }
+
+    @Test
+    void uncompleteDeletesOnlyOwnedRoutineCompletion() {
+        UUID userId = UUID.randomUUID();
+        Routine routine = dailyRoutine(userId);
+        LocalDate date = LocalDate.of(2026, 8, 18);
+        RoutineCompletion completion = new RoutineCompletion(routine.getId(), userId, date, java.time.Instant.now(), null, null);
+        when(routineRepository.findByIdAndOwnerId(routine.getId(), userId)).thenReturn(Optional.of(routine));
+        when(completionRepository.findByRoutineIdAndCompletionDate(routine.getId(), date)).thenReturn(Optional.of(completion));
+
+        service.uncomplete(userId, routine.getId(), date);
+
+        verify(completionRepository).delete(completion);
     }
 
     private Routine dailyRoutine(UUID userId) {

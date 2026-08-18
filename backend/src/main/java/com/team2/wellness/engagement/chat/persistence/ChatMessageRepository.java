@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> {
+    Optional<ChatMessage> findFirstByRoomIdOrderByCreatedAtDesc(UUID roomId);
     Optional<ChatMessage> findByRoomIdAndSenderIdAndClientMessageId(UUID roomId, UUID senderId, String clientMessageId);
     @Query("select m from ChatMessage m where m.roomId = :roomId and (:cursorAt is null or m.createdAt < :cursorAt or (m.createdAt = :cursorAt and m.id < :cursorId)) order by m.createdAt desc, m.id desc")
     List<ChatMessage> findPage(@Param("roomId") UUID roomId, @Param("cursorAt") Instant cursorAt, @Param("cursorId") UUID cursorId, Pageable pageable);

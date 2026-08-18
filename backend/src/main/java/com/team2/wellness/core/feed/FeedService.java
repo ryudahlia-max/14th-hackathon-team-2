@@ -33,19 +33,22 @@ public class FeedService {
     private final RoutineCompletionRepository completionRepository;
     private final RoutineRepository routineRepository;
     private final ProfileRepository profileRepository;
+    private final RoutineCompletionReactionRepository reactionRepository;
 
     public FeedService(
             FriendshipService friendshipService,
             GroupMemberRepository memberRepository,
             RoutineCompletionRepository completionRepository,
             RoutineRepository routineRepository,
-            ProfileRepository profileRepository
+            ProfileRepository profileRepository,
+            RoutineCompletionReactionRepository reactionRepository
     ) {
         this.friendshipService = friendshipService;
         this.memberRepository = memberRepository;
         this.completionRepository = completionRepository;
         this.routineRepository = routineRepository;
         this.profileRepository = profileRepository;
+        this.reactionRepository = reactionRepository;
     }
 
     public CursorPage<FeedItem> feed(UUID userId, String cursorValue, int requestedLimit) {
@@ -70,6 +73,9 @@ public class FeedService {
         List<FeedItem> items = page.stream().map(completion -> {
             Routine routine = routines.get(completion.getRoutineId());
             Profile profile = profiles.get(completion.getUserId());
+            String myReaction = reactionRepository.findByCompletionIdAndReactorId(completion.getId(), userId)
+                    .map(RoutineCompletionReaction::getType)
+                    .orElse(null);
             return new FeedItem(
                     completion.getId(),
                     completion.getUserId(),
@@ -79,7 +85,8 @@ public class FeedService {
                     completion.getCompletionDate(),
                     completion.getCompletedAt(),
                     completion.getProofObjectPath(),
-                    completion.getNote()
+                    completion.getNote(),
+                    myReaction
             );
         }).toList();
 
@@ -121,7 +128,8 @@ public class FeedService {
             java.time.LocalDate completionDate,
             Instant completedAt,
             String proofObjectPath,
-            String note
+            String note,
+            String myReaction
     ) {
     }
 }

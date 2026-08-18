@@ -9,14 +9,11 @@ export async function acceptInvite(token: string): Promise<void> {
   await api.post<unknown>(`/api/v1/friends/invites/${encodeURIComponent(token)}/accept`);
 }
 
-// GET /api/v1/friends는 { userId, nickname }만 내려주고 avatarUrl이 없다.
-// 화면 쪽 Friend 타입(id, name, avatarUrl?, status)과 필드명이 달라서
-// FriendRow 등 기존 컴포넌트를 바꾸지 않도록 여기서 매핑해서 반환한다.
 function toFriend(summary: FriendSummary): Friend {
   return {
     id: summary.userId,
     name: summary.nickname,
-    avatarUrl: undefined,
+    avatarUrl: summary.avatarUrl ?? undefined,
     status: 'active',
   };
 }

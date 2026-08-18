@@ -70,6 +70,15 @@ public class CoreAccessAdapter implements CoreAccessPort {
     }
 
     @Override
+    public Optional<GroupSummary> getGroupSummary(UUID groupId) {
+        try {
+            return Optional.of(new GroupSummary(groupId, groupService.name(groupId)));
+        } catch (com.team2.wellness.common.api.ApiException exception) {
+            return Optional.empty();
+        }
+    }
+
+    @Override
     public boolean hasAiImageConsent(UUID userId) {
         return profileRepository.findById(userId)
                 .map(profile -> profile.isAiFaceConsent() && profile.getAvatarObjectPath() != null)

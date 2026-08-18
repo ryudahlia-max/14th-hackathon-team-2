@@ -15,7 +15,7 @@ const COLORS = [
 
 interface Props {
   initial?: Routine;
-  onSave: (name: string, count: number, color: string) => void;
+  onSave: (name: string, color: string) => void;
   onDelete?: () => void;
   onClose: () => void;
 }
@@ -23,12 +23,11 @@ interface Props {
 export default function AddRoutineModal({ initial, onSave, onDelete, onClose }: Props) {
   const isEditing = !!initial;
   const [name, setName] = useState(initial?.name ?? '');
-  const [count, setCount] = useState(initial?.totalCount ?? 1);
   const [color, setColor] = useState(initial?.color ?? COLORS[0]);
 
   function handleSubmit() {
     if (!name.trim()) return;
-    onSave(name.trim(), count, color);
+    onSave(name.trim(), color);
     onClose();
   }
 
@@ -57,25 +56,6 @@ export default function AddRoutineModal({ initial, onSave, onDelete, onClose }: 
             autoFocus
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           />
-        </div>
-
-        <div className="mb-5">
-          <label className="text-sm text-gray-500 mb-1.5 block">횟수</label>
-          <div className="flex items-center gap-5">
-            <button
-              onClick={() => setCount(c => Math.max(1, c - 1))}
-              className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center text-xl text-gray-600"
-            >
-              −
-            </button>
-            <span className="text-xl font-semibold w-6 text-center">{count}</span>
-            <button
-              onClick={() => setCount(c => Math.min(20, c + 1))}
-              className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center text-xl text-gray-600"
-            >
-              +
-            </button>
-          </div>
         </div>
 
         <div className="mb-8">

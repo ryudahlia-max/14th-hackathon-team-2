@@ -63,6 +63,17 @@ public class ProfileService {
         return profile;
     }
 
+    public Profile updateAvatar(UUID userId, String avatarObjectPath) {
+        Profile profile = get(userId);
+        profile.update(
+                profile.getNickname(),
+                profile.getTimezone(),
+                normalizeBlank(avatarObjectPath),
+                profile.isAiFaceConsent()
+        );
+        return profile;
+    }
+
     private void validateTimezone(String timezone) {
         try {
             ZoneId.of(timezone);

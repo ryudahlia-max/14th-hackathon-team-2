@@ -18,6 +18,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,10 +34,16 @@ public class RoutineController {
 
     private final CurrentUser currentUser;
     private final RoutineService routineService;
+    private final com.team2.wellness.core.friend.FriendshipService friendshipService;
 
-    public RoutineController(CurrentUser currentUser, RoutineService routineService) {
+    public RoutineController(
+            CurrentUser currentUser,
+            RoutineService routineService,
+            com.team2.wellness.core.friend.FriendshipService friendshipService
+    ) {
         this.currentUser = currentUser;
         this.routineService = routineService;
+        this.friendshipService = friendshipService;
     }
 
     @PostMapping
@@ -48,6 +55,12 @@ public class RoutineController {
     @GetMapping
     List<RoutineResponse> list(Authentication authentication) {
         return routineService.list(currentUser.id(authentication)).stream().map(RoutineResponse::from).toList();
+    }
+
+    @DeleteMapping("/{routineId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void delete(Authentication authentication, @PathVariable UUID routineId) {
+        routineService.delete(currentUser.id(authentication), routineId);
     }
 
     @PatchMapping("/{routineId}")
@@ -79,12 +92,67 @@ public class RoutineController {
         ));
     }
 
+    @DeleteMapping("/{routineId}/completions")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void uncomplete(
+            Authentication authentication,
+            @PathVariable UUID routineId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        routineService.uncomplete(currentUser.id(authentication), routineId, date);
+    }
+
     @GetMapping("/calendar")
     List<RoutineService.CalendarDay> calendar(
             Authentication authentication,
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM") YearMonth month
     ) {
         return routineService.calendar(currentUser.id(authentication), month);
+    }
+
+    @GetMapping("/friends/{friendId}/missed")
+    List<RoutineService.MissedRoutine> missed(
+            Authentication authentication,
+            @PathVariable UUID friendId
+    ) {
+        UUID requesterId = currentUser.id(authentication);
+        if (!friendshipService.areFriends(requesterId, friendId)) {
+            throw new com.team2.wellness.common.api.ApiException(
+                    HttpStatus.FORBIDDEN,
+                    "FRIENDSHIP_REQUIRED",
+                    "친구의 미완료 루틴만 확인할 수 있습니다."
+            );
+        }
+        return routineService.missedRoutines(friendId);
+    }
+
+    @GetMapping("/friends/{friendId}")
+    List<RoutineResponse> friendRoutines(
+            Authentication authentication,
+            @PathVariable UUID friendId
+    ) {
+        requireFriend(currentUser.id(authentication), friendId);
+        return routineService.list(friendId).stream().map(RoutineResponse::from).toList();
+    }
+
+    @GetMapping("/friends/{friendId}/calendar")
+    List<RoutineService.CalendarDay> friendCalendar(
+            Authentication authentication,
+            @PathVariable UUID friendId,
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM") YearMonth month
+    ) {
+        requireFriend(currentUser.id(authentication), friendId);
+        return routineService.calendar(friendId, month);
+    }
+
+    private void requireFriend(UUID requesterId, UUID friendId) {
+        if (!friendshipService.areFriends(requesterId, friendId)) {
+            throw new com.team2.wellness.common.api.ApiException(
+                    HttpStatus.FORBIDDEN,
+                    "FRIENDSHIP_REQUIRED",
+                    "친구의 루틴만 확인할 수 있습니다."
+            );
+        }
     }
 
     record RoutineRequest(

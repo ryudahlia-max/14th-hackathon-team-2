@@ -25,4 +25,5 @@ public class ChatRoom {
     public static ChatRoom group(UUID groupId) { return new ChatRoom(UUID.randomUUID(), Type.GROUP, null, groupId); }
     public static String pairKey(UUID first, UUID second) { return first.compareTo(second) < 0 ? first + ":" + second : second + ":" + first; }
     public UUID getId() { return id; } public Type getType() { return type; } public UUID getGroupId() { return groupId; }
+    public Instant getCreatedAt() { return createdAt; }
 }

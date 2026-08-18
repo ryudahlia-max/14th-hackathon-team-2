@@ -33,4 +33,5 @@ export interface InviteToken {
 export interface FriendSummary {
   userId: string;
   nickname: string;
+  avatarUrl: string | null;
 }

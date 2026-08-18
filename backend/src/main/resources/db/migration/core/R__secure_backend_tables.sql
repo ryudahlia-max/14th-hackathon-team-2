@@ -11,6 +11,7 @@ begin
         'group_members',
         'routines',
         'routine_completions',
+        'routine_completion_reactions',
         'chat_rooms',
         'chat_room_members',
         'chat_messages',

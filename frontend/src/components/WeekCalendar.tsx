@@ -11,12 +11,23 @@ interface Props {
   onToggleInstance: (dateStr: string, routineId: string, instanceIndex: number) => void;
   onAddRoutine: () => void;
   onEditRoutine: (routine: Routine) => void;
+  readOnly?: boolean;
 }
 
 const DAY_NAMES = ['월', '화', '수', '목', '금', '토', '일'];
 
 function toDateStr(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function scheduledOn(routine: Routine, dateStr: string) {
+  if (!routine.api) return true;
+  const date = new Date(`${dateStr}T00:00:00`);
+  const day = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][date.getDay()];
+  return routine.api.active
+    && dateStr >= routine.api.startDate
+    && (!routine.api.endDate || dateStr <= routine.api.endDate)
+    && routine.api.daysOfWeek.includes(day);
 }
 
 export default function WeekCalendar({
@@ -28,6 +39,7 @@ export default function WeekCalendar({
   onToggleInstance,
   onAddRoutine,
   onEditRoutine,
+  readOnly = false,
 }: Props) {
   const today = new Date();
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -38,7 +50,7 @@ export default function WeekCalendar({
 
   function buildSegments(dateStr: string) {
     const dayProgress = progress[dateStr] ?? {};
-    return routines.flatMap(r =>
+    return routines.filter(routine => scheduledOn(routine, dateStr)).flatMap(r =>
       Array.from({ length: r.totalCount }, (_, i) => ({
         color: r.color,
         filled: (dayProgress[r.id] ?? []).includes(i),
@@ -48,13 +60,14 @@ export default function WeekCalendar({
 
   function isAllComplete(dateStr: string) {
     const dayProgress = progress[dateStr] ?? {};
-    return routines.length > 0 && routines.every(r => (dayProgress[r.id]?.length ?? 0) >= r.totalCount);
+    const scheduled = routines.filter(routine => scheduledOn(routine, dateStr));
+    return scheduled.length > 0 && scheduled.every(r => (dayProgress[r.id]?.length ?? 0) >= r.totalCount);
   }
 
   const selectedDayProgress = progress[selectedDay] ?? {};
 
   // Each count of a routine is one row
-  const routineRows = routines.flatMap(r =>
+  const routineRows = routines.filter(routine => scheduledOn(routine, selectedDay)).flatMap(r =>
     Array.from({ length: r.totalCount }, (_, i) => ({ routine: r, index: i }))
   );
 
@@ -117,7 +130,7 @@ export default function WeekCalendar({
       <div className="h-px bg-gray-100 mt-6 mb-6" />
 
       {/* Add routine button */}
-      <div className="mb-6">
+      {!readOnly && <div className="mb-6">
         <button
           onClick={onAddRoutine}
           className="flex items-center gap-2 px-4 py-2 rounded-full border border-gray-300 text-sm text-gray-600"
@@ -127,7 +140,7 @@ export default function WeekCalendar({
             +
           </span>
         </button>
-      </div>
+      </div>}
 
       {/* Routine list */}
       <div className="space-y-5">
@@ -140,6 +153,7 @@ export default function WeekCalendar({
               <div key={`${routine.id}-${index}`} className="flex items-center gap-3">
                 <button
                   onClick={() => handleCheck(routine.id, index)}
+                  disabled={readOnly}
                   className="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0"
                   style={{
                     borderColor: routine.color,
@@ -154,7 +168,7 @@ export default function WeekCalendar({
                 >
                   {routine.name}
                 </span>
-                {index === 0 && (
+                {!readOnly && index === 0 && (
                   <button
                     onClick={() => onEditRoutine(routine)}
                     aria-label={`${routine.name} 수정`}

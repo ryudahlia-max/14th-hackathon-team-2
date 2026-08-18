@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import { X, Check } from 'lucide-react';
-import { FRIENDS, ME_ID } from '../data/mockData';
-
-const SELECTABLE_FRIENDS = FRIENDS.filter(f => f.id !== ME_ID);
+import type { Friend } from '../types/friend';
 
 interface Props {
+  friends: Friend[];
   onCreate: (friendIds: string[], groupName: string) => void;
   onClose: () => void;
 }
 
-export default function NewChatModal({ onCreate, onClose }: Props) {
+export default function NewChatModal({ friends, onCreate, onClose }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [groupName, setGroupName] = useState('');
 
@@ -37,7 +36,7 @@ export default function NewChatModal({ onCreate, onClose }: Props) {
         <div className="mb-5">
           <label className="text-sm text-gray-500 mb-1.5 block">친구 선택</label>
           <div className="space-y-2">
-            {SELECTABLE_FRIENDS.map(friend => {
+            {friends.map(friend => {
               const checked = selected.includes(friend.id);
               return (
                 <button

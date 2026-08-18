@@ -9,6 +9,7 @@ export interface Routine {
   name: string;
   color: string;
   totalCount: number;
+  api?: import('../api/routine').RoutineResponse;
 }
 
 export interface DayProgress {

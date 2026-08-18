@@ -14,6 +14,16 @@ function toDateStr(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+function scheduledOn(routine: Routine, dateStr: string) {
+  if (!routine.api) return true;
+  const date = new Date(`${dateStr}T00:00:00`);
+  const day = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][date.getDay()];
+  return routine.api.active
+    && dateStr >= routine.api.startDate
+    && (!routine.api.endDate || dateStr <= routine.api.endDate)
+    && routine.api.daysOfWeek.includes(day);
+}
+
 export default function MonthCalendar({ year, month, routines, progress }: Props) {
   const firstDow = new Date(year, month, 1).getDay(); // 0=Sun
   const startOffset = (firstDow + 6) % 7; // Mon-first
@@ -23,7 +33,7 @@ export default function MonthCalendar({ year, month, routines, progress }: Props
 
   function buildSegments(dateStr: string) {
     const dayProgress = progress[dateStr] ?? {};
-    return routines.flatMap(r =>
+    return routines.filter(routine => scheduledOn(routine, dateStr)).flatMap(r =>
       Array.from({ length: r.totalCount }, (_, i) => ({
         color: r.color,
         filled: (dayProgress[r.id] ?? []).includes(i),
@@ -33,7 +43,8 @@ export default function MonthCalendar({ year, month, routines, progress }: Props
 
   function isAllComplete(dateStr: string) {
     const dayProgress = progress[dateStr] ?? {};
-    return routines.length > 0 && routines.every(r => (dayProgress[r.id]?.length ?? 0) >= r.totalCount);
+    const scheduled = routines.filter(routine => scheduledOn(routine, dateStr));
+    return scheduled.length > 0 && scheduled.every(r => (dayProgress[r.id]?.length ?? 0) >= r.totalCount);
   }
 
   const rows = Math.ceil((startOffset + daysInMonth) / 7);

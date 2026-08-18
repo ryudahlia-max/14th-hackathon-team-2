@@ -79,7 +79,11 @@ public class FriendshipService {
         profileRepository.findAllById(ids).forEach(profile -> profiles.put(profile.getId(), profile));
         return ids.stream().map(id -> {
             Profile profile = profiles.get(id);
-            return new FriendSummary(id, profile == null ? "알 수 없는 사용자" : profile.getNickname());
+            return new FriendSummary(
+                    id,
+                    profile == null ? "알 수 없는 사용자" : profile.getNickname(),
+                    profile == null ? null : profile.getAvatarObjectPath()
+            );
         }).toList();
     }
 
@@ -109,6 +113,6 @@ public class FriendshipService {
         }
     }
 
-    public record FriendSummary(UUID userId, String nickname) {
+    public record FriendSummary(UUID userId, String nickname, String avatarObjectPath) {
     }
 }

@@ -1,26 +1,21 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Session, User } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../services/supabaseClient';
-
-interface AuthContextValue {
-  session: Session | null;
-  user: User | null;
-  loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signOut: () => Promise<void>;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+import { ensureProfile } from '../api/profile';
+import { AuthContext } from './authState';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
+      if (data.session) {
+        const emailName = data.session.user.email?.split('@')[0] ?? '사용자';
+        await ensureProfile(emailName).catch(error => console.error('프로필 초기화에 실패했습니다.', error));
+      }
       setLoading(false);
     });
 
@@ -32,12 +27,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function signUp(email: string, password: string) {
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (!error && data.session) {
+      try {
+        await ensureProfile(email.split('@')[0] || '사용자');
+      } catch (profileError) {
+        console.error('프로필 초기화에 실패했습니다.', profileError);
+        return { error: '프로필 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.' };
+      }
+    }
     return { error: error?.message ?? null };
   }
 
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!error) {
+      try {
+        await ensureProfile(email.split('@')[0] || '사용자');
+      } catch (profileError) {
+        console.error('프로필 초기화에 실패했습니다.', profileError);
+        return { error: '프로필 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.' };
+      }
+    }
     return { error: error?.message ?? null };
   }
 
@@ -50,10 +61,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
 }

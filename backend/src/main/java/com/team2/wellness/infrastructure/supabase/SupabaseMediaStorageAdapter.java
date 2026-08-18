@@ -1,6 +1,7 @@
 package com.team2.wellness.infrastructure.supabase;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.team2.wellness.core.profile.AvatarStoragePort;
 import com.team2.wellness.core.profile.ProfileRepository;
 import com.team2.wellness.engagement.port.out.MediaStoragePort;
 import java.time.Duration;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Component
-public class SupabaseMediaStorageAdapter implements MediaStoragePort {
+public class SupabaseMediaStorageAdapter implements MediaStoragePort, AvatarStoragePort {
 
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/png", "image/jpeg", "image/webp");
 
@@ -94,6 +95,17 @@ public class SupabaseMediaStorageAdapter implements MediaStoragePort {
     @Override
     public StoredMedia storeChatMedia(UUID ownerId, byte[] bytes, String contentType) {
         return store(chatBucket, ownerId + "/" + UUID.randomUUID() + extension(contentType), bytes, contentType);
+    }
+
+    @Override
+    public StoredAvatar storeAvatar(UUID ownerId, byte[] bytes, String contentType) {
+        StoredMedia stored = store(
+                avatarBucket,
+                ownerId + "/" + UUID.randomUUID() + extension(contentType),
+                bytes,
+                contentType
+        );
+        return new StoredAvatar(stored.objectKey(), stored.contentType());
     }
 
     @Override

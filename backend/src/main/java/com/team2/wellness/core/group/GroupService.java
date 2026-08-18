@@ -93,6 +93,10 @@ public class GroupService {
         return memberRepository.findAllByGroupId(groupId).stream().map(GroupMember::getUserId).toList();
     }
 
+    public String name(UUID groupId) {
+        return findGroup(groupId).getName();
+    }
+
     private void addMemberInternal(WellnessGroup group, UUID userId) {
         if (memberRepository.countByGroupId(group.getId()) >= group.getMaxMembers()) {
             throw new ApiException(HttpStatus.CONFLICT, "GROUP_FULL", "그룹 정원을 초과했습니다.");

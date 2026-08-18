@@ -1,6 +1,7 @@
 package com.team2.wellness.core.friend;
 
 import com.team2.wellness.common.security.CurrentUser;
+import com.team2.wellness.core.profile.AvatarStoragePort;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -20,15 +21,32 @@ public class FriendshipController {
 
     private final CurrentUser currentUser;
     private final FriendshipService friendshipService;
+    private final AvatarStoragePort avatarStorage;
 
-    public FriendshipController(CurrentUser currentUser, FriendshipService friendshipService) {
+    public FriendshipController(
+            CurrentUser currentUser,
+            FriendshipService friendshipService,
+            AvatarStoragePort avatarStorage
+    ) {
         this.currentUser = currentUser;
         this.friendshipService = friendshipService;
+        this.avatarStorage = avatarStorage;
     }
 
     @GetMapping
-    List<FriendshipService.FriendSummary> friends(Authentication authentication) {
-        return friendshipService.friends(currentUser.id(authentication));
+    List<FriendResponse> friends(Authentication authentication) {
+        return friendshipService.friends(currentUser.id(authentication)).stream()
+                .map(friend -> new FriendResponse(friend.userId(), friend.nickname(), avatarUrl(friend.avatarObjectPath())))
+                .toList();
+    }
+
+    private String avatarUrl(String objectPath) {
+        if (objectPath == null || objectPath.isBlank()) return null;
+        try {
+            return avatarStorage.temporaryDownloadUrl(objectPath);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     @PostMapping("/invites")
@@ -51,6 +69,9 @@ public class FriendshipController {
     }
 
     record InviteResponse(String token, Instant expiresAt) {
+    }
+
+    record FriendResponse(UUID userId, String nickname, String avatarUrl) {
     }
 
     record FriendshipResponse(UUID id, UUID firstUserId, UUID secondUserId, String status) {

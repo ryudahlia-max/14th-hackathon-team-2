@@ -15,7 +15,7 @@ export default function FriendPill({ friend, isActive, onClick }: Props) {
         isActive ? 'bg-[#a2bfff]' : 'bg-white'
       }`}
     >
-      <Avatar friendId={friend.id} className="w-[33px] h-[33px]" />
+      <Avatar friendId={friend.id} src={friend.profileImage} className="w-[33px] h-[33px]" />
       <span className={`text-[13px] font-normal whitespace-nowrap ${isActive ? 'text-white' : 'text-black'}`}>
         {friend.name}
       </span>

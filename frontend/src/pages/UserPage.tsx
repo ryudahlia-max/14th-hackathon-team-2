@@ -1,19 +1,19 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pencil } from 'lucide-react';
 import AppNavigationBar from '../components/AppNavigationBar';
 import ConfirmModal from '../components/ConfirmModal';
 import Profile from '../components/Profile';
 import UserMenuButton from '../components/UserMenuButton';
-import { useAuth } from '../auth/AuthContext';
-import { FRIENDS, ME_ID } from '../data/mockData';
-import { getProfilePhoto, setProfilePhoto } from '../data/profileStore';
+import { useAuth } from '../auth/authState';
+import { getProfile, updateProfile, uploadAvatar, type ProfileResponse } from '../api/profile';
+import { getFriends } from '../api/friend';
 
 export default function UserPage() {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
-  const friendCount = FRIENDS.filter(f => f.id !== ME_ID).length;
-  const [photo, setPhoto] = useState(() => getProfilePhoto());
+  const { signOut, user } = useAuth();
+  const [friendCount, setFriendCount] = useState(0);
+  const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -22,17 +22,36 @@ export default function UserPage() {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  function handlePhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
+  useEffect(() => {
+    Promise.all([getProfile(), getFriends()]).then(([profileResult, friends]) => {
+      setProfile(profileResult);
+      setFriendCount(friends.length);
+    }).catch(error => console.error('프로필을 불러오지 못했습니다.', error));
+  }, []);
+
+  async function handlePhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      setProfilePhoto(dataUrl);
-      setPhoto(dataUrl);
-    };
-    reader.readAsDataURL(file);
+    try {
+      setProfile(await uploadAvatar(file));
+    } catch (error) {
+      console.error('프로필 사진 업로드에 실패했습니다.', error);
+    }
+  }
+
+  async function handleAiConsent(enabled: boolean) {
+    if (!profile) return;
+    try {
+      setProfile(await updateProfile({
+        nickname: profile.nickname,
+        timezone: profile.timezone,
+        avatarObjectPath: profile.avatarObjectPath,
+        aiFaceConsent: enabled,
+      }));
+    } catch (error) {
+      console.error('AI 이미지 동의 설정에 실패했습니다.', error);
+    }
   }
 
   function closeLogoutModal() {
@@ -64,7 +83,7 @@ export default function UserPage() {
             aria-label="프로필 사진 변경"
             className="relative shrink-0"
           >
-            <Profile src={photo} />
+            <Profile src={profile?.avatarUrl} />
             <span className="absolute bottom-0 right-0 w-6 h-6 rounded-full bg-[#a2bfff] border-2 border-white flex items-center justify-center">
               <Pencil size={11} color="white" />
             </span>
@@ -72,17 +91,26 @@ export default function UserPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg,image/webp"
             hidden
             onChange={handlePhotoPick}
           />
           <div className="flex flex-col items-start gap-1">
-            <p className="text-lg font-bold text-black">이가영</p>
-            <p className="text-sm text-[#6e6e6e]">emilygylee@naver.com</p>
+            <p className="text-lg font-bold text-black">{profile?.nickname ?? '사용자'}</p>
+            <p className="text-sm text-[#6e6e6e]">{user?.email ?? ''}</p>
             <p className="text-sm text-[#6e6e6e]">친구 {friendCount}명</p>
           </div>
         </div>
         <div className="flex w-full flex-col gap-3">
+          <label className="flex w-90 items-center justify-between self-center rounded-full bg-[rgba(188,207,248,0.5)] px-6 py-1 text-sm">
+            <span>AI 이미지에 내 사진 사용</span>
+            <input
+              type="checkbox"
+              checked={profile?.aiFaceConsent ?? false}
+              disabled={!profile?.avatarObjectPath}
+              onChange={event => void handleAiConsent(event.target.checked)}
+            />
+          </label>
           <UserMenuButton onClick={() => navigate('/friends')}>친구 관리</UserMenuButton>
           <UserMenuButton onClick={() => setShowLogoutModal(true)}>로그아웃</UserMenuButton>
           <UserMenuButton onClick={() => setShowDeleteModal(true)}>계정 삭제</UserMenuButton>
