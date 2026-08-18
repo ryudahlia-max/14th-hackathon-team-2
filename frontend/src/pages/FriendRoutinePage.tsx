@@ -3,6 +3,7 @@ import { Sun, Heart, Smile } from 'lucide-react';
 import AppNavigationBar from '../components/AppNavigationBar';
 import Avatar from '../components/Avatar';
 import { getNotifications } from '../data/notificationStore';
+import { ME_ID } from '../data/mockData';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
 import { useAutoRefresh } from '../utils/useAutoRefresh';
 import type { RoutineCompletionNotification } from '../types';
@@ -53,6 +54,7 @@ const REACTION_ICONS: Record<Reaction, typeof Heart> = {
 function buildRoutineGroups(): RoutineGroup[] {
   const byFriend = new Map<string, RoutineCompletionNotification[]>();
   for (const n of getNotifications()) {
+    if (n.friendId === ME_ID) continue; // 내가 완료한 루틴은 알림 대상이 아님
     const list = byFriend.get(n.friendId) ?? [];
     list.push(n);
     byFriend.set(n.friendId, list);

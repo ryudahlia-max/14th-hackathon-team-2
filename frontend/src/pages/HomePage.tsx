@@ -6,7 +6,7 @@ import MonthCalendar from '../components/MonthCalendar';
 import WeekCalendar from '../components/WeekCalendar';
 import AddRoutineModal from '../components/AddRoutineModal';
 import AppNavigationBar from '../components/AppNavigationBar';
-import { FRIENDS } from '../data/mockData';
+import { FRIENDS, ME_ID } from '../data/mockData';
 import { removeRoutineCompletionNotification, setRoutineCompletionNotification } from '../data/notificationStore';
 import type { Routine, MonthProgress, DayProgress } from '../types';
 
@@ -175,6 +175,9 @@ export default function HomePage() {
         },
       };
     });
+
+    // 내 루틴 체크는 알림 대상이 아님 (알림은 "친구가 완료했다"는 소식이어야 함)
+    if (selectedFriendId === ME_ID) return;
 
     const routine = routines.find(r => r.id === routineId);
     if (willCheck && routine) {
