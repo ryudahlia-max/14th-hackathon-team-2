@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (!error && data.session) {
       try {
-        await ensureProfile(email.split('@')[0] || '사용자');
+        await ensureProfile(email.split('@')[0] || '사용자', data.session.access_token);
       } catch (profileError) {
         console.error('프로필 초기화에 실패했습니다.', profileError);
         return { error: '프로필 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.', session: data.session };
@@ -41,9 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signIn(email: string, password: string) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (!error) {
+    if (!error && data.session) {
       try {
-        await ensureProfile(email.split('@')[0] || '사용자');
+        await ensureProfile(email.split('@')[0] || '사용자', data.session.access_token);
       } catch (profileError) {
         console.error('프로필 초기화에 실패했습니다.', profileError);
         return { error: '프로필 초기화에 실패했습니다. 잠시 후 다시 시도해주세요.', session: data.session };

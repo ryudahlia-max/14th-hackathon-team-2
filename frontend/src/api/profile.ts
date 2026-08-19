@@ -11,25 +11,25 @@ export interface ProfileResponse {
   updatedAt: string;
 }
 
-export function getProfile() {
-  return api.get<ProfileResponse>('/api/v1/me');
+export function getProfile(accessToken?: string) {
+  return api.get<ProfileResponse>('/api/v1/me', accessToken);
 }
 
-export function bootstrapProfile(nickname: string) {
+export function bootstrapProfile(nickname: string, accessToken?: string) {
   return api.post<ProfileResponse>('/api/v1/me/bootstrap', {
     nickname: nickname.slice(0, 30) || '사용자',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul',
     termsVersion: '2026-08-01',
     privacyVersion: '2026-08-01',
-  });
+  }, accessToken);
 }
 
-export async function ensureProfile(fallbackNickname: string) {
+export async function ensureProfile(fallbackNickname: string, accessToken?: string) {
   try {
-    return await getProfile();
+    return await getProfile(accessToken);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404 && error.code === 'PROFILE_NOT_FOUND') {
-      return bootstrapProfile(fallbackNickname);
+      return bootstrapProfile(fallbackNickname, accessToken);
     }
     throw error;
   }

@@ -18,9 +18,8 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
+async function request<T>(path: string, options: RequestInit = {}, accessToken?: string): Promise<T> {
+  const token = accessToken ?? (await supabase.auth.getSession()).data.session?.access_token;
 
   const headers = new Headers(options.headers);
   if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
@@ -44,9 +43,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
+  get: <T>(path: string, accessToken?: string) => request<T>(path, {}, accessToken),
+  post: <T>(path: string, body?: unknown, accessToken?: string) =>
+    request<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }, accessToken),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
