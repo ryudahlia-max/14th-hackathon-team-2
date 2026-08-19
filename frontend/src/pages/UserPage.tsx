@@ -9,6 +9,8 @@ import { useAuth } from '../auth/authState';
 import { getProfile, updateProfile, uploadAvatar, type ProfileResponse } from '../api/profile';
 import { getFriends } from '../api/friend';
 
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
 export default function UserPage() {
   const navigate = useNavigate();
   const { signOut, user } = useAuth();
@@ -21,6 +23,7 @@ export default function UserPage() {
   const [logoutError, setLogoutError] = useState<string | null>(null);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([getProfile(), getFriends()]).then(([profileResult, friends]) => {
@@ -33,16 +36,23 @@ export default function UserPage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    if (file.size > MAX_IMAGE_BYTES) {
+      setProfileError('프로필 사진은 10MB 이하만 업로드할 수 있습니다.');
+      return;
+    }
     try {
+      setProfileError(null);
       setProfile(await uploadAvatar(file));
     } catch (error) {
       console.error('프로필 사진 업로드에 실패했습니다.', error);
+      setProfileError('프로필 사진 업로드에 실패했습니다.');
     }
   }
 
   async function handleAiConsent(enabled: boolean) {
     if (!profile) return;
     try {
+      setProfileError(null);
       setProfile(await updateProfile({
         nickname: profile.nickname,
         timezone: profile.timezone,
@@ -51,6 +61,7 @@ export default function UserPage() {
       }));
     } catch (error) {
       console.error('AI 이미지 동의 설정에 실패했습니다.', error);
+      setProfileError('AI 이미지 동의 설정에 실패했습니다.');
     }
   }
 
@@ -102,6 +113,7 @@ export default function UserPage() {
           </div>
         </div>
         <div className="flex w-full flex-col gap-3">
+          {profileError && <p className="text-sm text-red-500">{profileError}</p>}
           <label className="flex w-90 items-center justify-between self-center rounded-full bg-[rgba(188,207,248,0.5)] px-6 py-1 text-sm">
             <span>AI 이미지에 내 사진 사용</span>
             <input

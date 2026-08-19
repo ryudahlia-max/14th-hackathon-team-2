@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import com.team2.wellness.core.friend.FriendshipService;
 import com.team2.wellness.core.group.GroupMemberRepository;
 import com.team2.wellness.core.profile.ProfileRepository;
+import com.team2.wellness.core.profile.AvatarStoragePort;
 import com.team2.wellness.core.routine.RoutineCompletionRepository;
 import com.team2.wellness.core.routine.RoutineRepository;
 import java.time.Instant;
@@ -38,7 +39,8 @@ class FeedServiceTest {
                 completions,
                 mock(RoutineRepository.class),
                 mock(ProfileRepository.class),
-                mock(RoutineCompletionReactionRepository.class)
+                mock(RoutineCompletionReactionRepository.class),
+                mock(AvatarStoragePort.class)
         );
     }
 

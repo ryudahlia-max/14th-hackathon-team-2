@@ -2,6 +2,9 @@ package com.team2.wellness.core.feed;
 
 import com.team2.wellness.common.api.ApiException;
 import com.team2.wellness.core.friend.FriendshipService;
+import com.team2.wellness.core.group.GroupMemberRepository;
+import com.team2.wellness.core.profile.AvatarStoragePort;
+import com.team2.wellness.core.profile.Profile;
 import com.team2.wellness.core.profile.ProfileRepository;
 import com.team2.wellness.core.routine.RoutineCompletion;
 import com.team2.wellness.core.routine.RoutineCompletionRepository;
@@ -24,19 +27,25 @@ public class FeedReactionService {
     private final RoutineRepository routines;
     private final ProfileRepository profiles;
     private final FriendshipService friendships;
+    private final GroupMemberRepository groupMembers;
+    private final AvatarStoragePort avatarStorage;
 
     public FeedReactionService(
             RoutineCompletionReactionRepository reactions,
             RoutineCompletionRepository completions,
             RoutineRepository routines,
             ProfileRepository profiles,
-            FriendshipService friendships
+            FriendshipService friendships,
+            GroupMemberRepository groupMembers,
+            AvatarStoragePort avatarStorage
     ) {
         this.reactions = reactions;
         this.completions = completions;
         this.routines = routines;
         this.profiles = profiles;
         this.friendships = friendships;
+        this.groupMembers = groupMembers;
+        this.avatarStorage = avatarStorage;
     }
 
     public ReactionView react(UUID userId, UUID completionId, String rawType) {
@@ -62,12 +71,13 @@ public class FeedReactionService {
             RoutineCompletion completion = completions.findById(reaction.getCompletionId()).orElse(null);
             String routineTitle = completion == null ? "삭제된 루틴" : routines.findById(completion.getRoutineId())
                     .map(routine -> routine.getTitle()).orElse("삭제된 루틴");
-            String reactorNickname = profiles.findById(reaction.getReactorId())
-                    .map(profile -> profile.getNickname()).orElse("알 수 없는 사용자");
+            Profile reactor = profiles.findById(reaction.getReactorId()).orElse(null);
+            String reactorNickname = reactor == null ? "알 수 없는 사용자" : reactor.getNickname();
             return new ReceivedReactionView(
                     reaction.getCompletionId(),
                     reaction.getReactorId(),
                     reactorNickname,
+                    avatarUrl(reactor),
                     routineTitle,
                     reaction.getType(),
                     reaction.getCreatedAt()
@@ -78,10 +88,21 @@ public class FeedReactionService {
     private RoutineCompletion visibleFriendCompletion(UUID userId, UUID completionId) {
         RoutineCompletion completion = completions.findById(completionId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "COMPLETION_NOT_FOUND", "완료 기록을 찾을 수 없습니다."));
-        if (completion.getUserId().equals(userId) || !friendships.areFriends(userId, completion.getUserId())) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "REACTION_NOT_ALLOWED", "친구의 완료 기록에만 반응할 수 있습니다.");
+        boolean connected = friendships.areFriends(userId, completion.getUserId())
+                || groupMembers.existsSharedGroup(userId, completion.getUserId());
+        if (completion.getUserId().equals(userId) || !connected) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "REACTION_NOT_ALLOWED", "연결된 사용자의 완료 기록에만 반응할 수 있습니다.");
         }
         return completion;
+    }
+
+    private String avatarUrl(Profile profile) {
+        if (profile == null || profile.getAvatarObjectPath() == null) return null;
+        try {
+            return avatarStorage.temporaryDownloadUrl(profile.getAvatarObjectPath());
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     private String normalizeType(String rawType) {
@@ -102,6 +123,7 @@ public class FeedReactionService {
             UUID completionId,
             UUID reactorId,
             String reactorNickname,
+            String reactorAvatarUrl,
             String routineTitle,
             String type,
             Instant createdAt

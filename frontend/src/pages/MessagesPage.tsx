@@ -7,12 +7,15 @@ import NewChatModal from '../components/NewChatModal';
 import { createGroup, getFriends } from '../api/friend';
 import { createDirectRoom, createGroupRoom, getChatRooms, type ChatRoomResponse } from '../api/chat';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
-import { useAuth } from '../auth/authState';
 import type { Friend } from '../types/friend';
+import { useAuth } from '../auth/authState';
+import { supabase } from '../services/supabaseClient';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import type { ChatMessageResponse } from '../api/chat';
 
 export default function MessagesPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { session, user } = useAuth();
   const [chats, setChats] = useState<ChatRoomResponse[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [showNewChat, setShowNewChat] = useState(false);
@@ -24,7 +27,35 @@ export default function MessagesPage() {
       .catch(loadError => { console.error(loadError); setError('채팅 목록을 불러오지 못했습니다.'); });
   }, []);
 
-  const avatarByFriendId = new Map(friends.map(friend => [friend.id, friend.avatarUrl]));
+  const roomIdsKey = chats.map(chat => chat.id).sort().join(',');
+  useEffect(() => {
+    if (!session?.access_token || !roomIdsKey) return;
+    let cancelled = false;
+    const channels: RealtimeChannel[] = [];
+    void (async () => {
+      await supabase.realtime.setAuth(session.access_token);
+      if (cancelled) return;
+      for (const roomId of roomIdsKey.split(',')) {
+        const channel = supabase.channel(`chat-room:${roomId}`, { config: { private: true } });
+        channels.push(channel);
+        channel
+          .on('broadcast', { event: 'message.created' }, event => {
+            const message = event.payload as ChatMessageResponse;
+            setChats(previous => previous.map(chat =>
+              chat.id === roomId ? { ...chat, lastMessage: message } : chat));
+          })
+          .subscribe(status => {
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+              setError('채팅 목록 실시간 연결이 끊겼습니다.');
+            }
+          });
+      }
+    })();
+    return () => {
+      cancelled = true;
+      channels.forEach(channel => { void supabase.removeChannel(channel); });
+    };
+  }, [roomIdsKey, session?.access_token]);
 
   async function handleCreateChat(friendIds: string[], groupName: string) {
     try {
@@ -42,6 +73,12 @@ export default function MessagesPage() {
   const conversations = [...chats].sort((a, b) =>
     (b.lastMessage?.createdAt ?? b.createdAt).localeCompare(a.lastMessage?.createdAt ?? a.createdAt));
 
+  function directPeer(chat: ChatRoomResponse) {
+    if (chat.type !== 'DIRECT') return null;
+    const peerId = chat.memberIds.find(id => id !== user?.id) ?? null;
+    return peerId ? friends.find(friend => friend.id === peerId) ?? null : null;
+  }
+
   return (
     <div className="flex flex-col h-full bg-white">
       <div className="flex items-center justify-between px-7 pt-4 pb-4">
@@ -51,10 +88,9 @@ export default function MessagesPage() {
       {error && <p className="px-7 pb-2 text-xs text-red-500">{error}</p>}
       <div className="flex-1 overflow-y-auto">
         {conversations.map(chat => {
-          const otherMemberId = chat.memberIds.find(id => id !== user?.id) ?? chat.memberIds[0] ?? '';
-          return (
-          <button key={chat.id} onClick={() => navigate(`/messages/${chat.id}`)} className="w-full flex items-center gap-3 px-7 py-3 border-b border-gray-100 text-left">
-            <Avatar friendId={otherMemberId} src={avatarByFriendId.get(otherMemberId)} className="w-12 h-12" />
+          const peer = directPeer(chat);
+          return <button key={chat.id} onClick={() => navigate(`/messages/${chat.id}`)} className="w-full flex items-center gap-3 px-7 py-3 border-b border-gray-100 text-left">
+            <Avatar friendId={peer?.id ?? chat.id} src={peer?.avatarUrl} className="w-12 h-12" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{chat.name}</span>
@@ -62,8 +98,7 @@ export default function MessagesPage() {
               </div>
               <p className="text-sm text-gray-500 truncate">{chat.lastMessage?.content ?? (chat.lastMessage?.mediaUrl ? '사진을 보냈어요' : '아직 대화가 없어요')}</p>
             </div>
-          </button>
-          );
+          </button>;
         })}
       </div>
       <AppNavigationBar />

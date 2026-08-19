@@ -71,10 +71,14 @@ app:
       enabled: ${AI_WORKER_ENABLED:true}
       initial-delay-ms: ${AI_WORKER_INITIAL_DELAY_MS:5000}
       fixed-delay-ms: ${AI_WORKER_FIXED_DELAY_MS:3000}
+      running-timeout: ${AI_WORKER_RUNNING_TIMEOUT:PT10M}
   recap:
     enabled: ${MONTHLY_RECAP_ENABLED:true}
     cron: ${MONTHLY_RECAP_CRON:0 5 0 1 * *}
     zone: ${MONTHLY_RECAP_ZONE:Asia/Seoul}
+  reminder:
+    enabled: ${ROUTINE_REMINDER_ENABLED:true}
+    cron: ${ROUTINE_REMINDER_CRON:0 * * * * *}
   push:
     webhook-url: ${PUSH_WEBHOOK_URL:}
     bearer-token: ${PUSH_WEBHOOK_BEARER_TOKEN:}

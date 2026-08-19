@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import com.team2.wellness.common.api.ApiException;
 import com.team2.wellness.engagement.notification.persistence.NotificationRepository;
+import com.team2.wellness.engagement.notification.domain.Notification;
 import com.team2.wellness.engagement.port.out.PushNotificationPort;
 import java.time.Instant;
 import java.util.List;
@@ -63,5 +64,21 @@ class NotificationServiceTest {
                 .extracting(error -> ((ApiException) error).code())
                 .isEqualTo("INVALID_CURSOR");
         verifyNoInteractions(notifications);
+    }
+
+    @Test
+    void createOnceUsesDatabaseConflictSafeInsert() {
+        UUID userId = UUID.randomUUID();
+        String key = "routine-reminder:test:2026-08-20";
+        Notification saved = new Notification(userId, "ROUTINE_REMINDER", "알림", key);
+        when(notifications.findByDedupKey(key))
+                .thenReturn(java.util.Optional.empty())
+                .thenReturn(java.util.Optional.of(saved));
+        when(notifications.insertIfAbsent(any(), eq(userId), eq("ROUTINE_REMINDER"), eq("알림"), eq(key), any()))
+                .thenReturn(1);
+
+        assertThat(service.createOnce(userId, "ROUTINE_REMINDER", "알림", key)).isSameAs(saved);
+
+        verify(notifications).insertIfAbsent(any(), eq(userId), eq("ROUTINE_REMINDER"), eq("알림"), eq(key), any());
     }
 }

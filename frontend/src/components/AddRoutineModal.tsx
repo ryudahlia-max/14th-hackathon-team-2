@@ -13,9 +13,19 @@ const COLORS = [
   '#2DD4BF',
 ];
 
+const CATEGORIES = [
+  { value: 'HYDRATION', label: '수분' },
+  { value: 'MOVEMENT', label: '운동' },
+  { value: 'MINDFULNESS', label: '마음챙김' },
+  { value: 'SLEEP', label: '수면' },
+  { value: 'STUDY', label: '공부' },
+  { value: 'NUTRITION', label: '식사' },
+  { value: 'OTHER', label: '기타' },
+];
+
 interface Props {
   initial?: Routine;
-  onSave: (name: string, color: string) => void;
+  onSave: (name: string, category: string, color: string) => void;
   onDelete?: () => void;
   onClose: () => void;
 }
@@ -23,11 +33,12 @@ interface Props {
 export default function AddRoutineModal({ initial, onSave, onDelete, onClose }: Props) {
   const isEditing = !!initial;
   const [name, setName] = useState(initial?.name ?? '');
+  const [category, setCategory] = useState(initial?.api?.category ?? 'OTHER');
   const [color, setColor] = useState(initial?.color ?? COLORS[0]);
 
   function handleSubmit() {
     if (!name.trim()) return;
-    onSave(name.trim(), color);
+    onSave(name.trim(), category, color);
     onClose();
   }
 
@@ -56,6 +67,17 @@ export default function AddRoutineModal({ initial, onSave, onDelete, onClose }: 
             autoFocus
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           />
+        </div>
+
+        <div className="mb-5">
+          <label className="text-sm text-gray-500 mb-1.5 block">루틴 종류</label>
+          <select
+            value={category}
+            onChange={event => setCategory(event.target.value)}
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#a2bfff]"
+          >
+            {CATEGORIES.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
         </div>
 
         <div className="mb-8">

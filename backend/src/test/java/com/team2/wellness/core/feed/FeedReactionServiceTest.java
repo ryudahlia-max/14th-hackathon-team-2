@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 
 import com.team2.wellness.common.api.ApiException;
 import com.team2.wellness.core.friend.FriendshipService;
+import com.team2.wellness.core.group.GroupMemberRepository;
+import com.team2.wellness.core.profile.AvatarStoragePort;
 import com.team2.wellness.core.profile.ProfileRepository;
 import com.team2.wellness.core.routine.RoutineCompletion;
 import com.team2.wellness.core.routine.RoutineCompletionRepository;
@@ -27,11 +29,20 @@ class FeedReactionServiceTest {
     private final RoutineRepository routines = mock(RoutineRepository.class);
     private final ProfileRepository profiles = mock(ProfileRepository.class);
     private final FriendshipService friendships = mock(FriendshipService.class);
+    private final GroupMemberRepository groupMembers = mock(GroupMemberRepository.class);
     private FeedReactionService service;
 
     @BeforeEach
     void setUp() {
-        service = new FeedReactionService(reactions, completions, routines, profiles, friendships);
+        service = new FeedReactionService(
+                reactions,
+                completions,
+                routines,
+                profiles,
+                friendships,
+                groupMembers,
+                mock(AvatarStoragePort.class)
+        );
     }
 
     @Test
@@ -63,5 +74,22 @@ class FeedReactionServiceTest {
         assertThatThrownBy(() -> service.react(reactor, completion.getId(), "HEART"))
                 .isInstanceOf(ApiException.class);
         verify(reactions, never()).save(any());
+    }
+
+    @Test
+    void nonFriendInSameGroupCanReactToVisibleCompletion() {
+        UUID reactor = UUID.randomUUID();
+        UUID owner = UUID.randomUUID();
+        RoutineCompletion completion = new RoutineCompletion(
+                UUID.randomUUID(), owner, LocalDate.of(2026, 8, 18), java.time.Instant.now(), null, null
+        );
+        when(completions.findById(completion.getId())).thenReturn(Optional.of(completion));
+        when(groupMembers.existsSharedGroup(reactor, owner)).thenReturn(true);
+        when(reactions.findByCompletionIdAndReactorId(completion.getId(), reactor)).thenReturn(Optional.empty());
+        when(reactions.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        FeedReactionService.ReactionView result = service.react(reactor, completion.getId(), "HEART");
+
+        assertThat(result.type()).isEqualTo("HEART");
     }
 }

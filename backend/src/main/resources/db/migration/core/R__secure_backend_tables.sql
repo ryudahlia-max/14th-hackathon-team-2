@@ -60,8 +60,37 @@ begin
                         and exists (
                             select 1
                             from public.chat_room_members member
+                            join public.chat_rooms room on room.id = member.room_id
                             where member.room_id = substring(requested_topic from 11)::uuid
                               and member.user_id = (select auth.uid())
+                              and (
+                                (
+                                    room.type = 'GROUP'
+                                    and exists (
+                                        select 1 from public.group_members current_member
+                                        where current_member.group_id = room.group_id
+                                          and current_member.user_id = (select auth.uid())
+                                    )
+                                )
+                                or
+                                (
+                                    room.type = 'DIRECT'
+                                    and exists (
+                                        select 1
+                                        from public.chat_room_members peer
+                                        join public.friendships friendship
+                                          on friendship.status = 'ACCEPTED'
+                                         and (
+                                              (friendship.first_user_id = (select auth.uid())
+                                               and friendship.second_user_id = peer.user_id)
+                                           or (friendship.second_user_id = (select auth.uid())
+                                               and friendship.first_user_id = peer.user_id)
+                                         )
+                                        where peer.room_id = room.id
+                                          and peer.user_id <> (select auth.uid())
+                                    )
+                                )
+                              )
                         )
                     )
                     or

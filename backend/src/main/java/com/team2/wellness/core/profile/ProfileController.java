@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Value;
 
 @RestController
 @RequestMapping("/api/v1/me")
@@ -27,15 +28,18 @@ public class ProfileController {
     private final CurrentUser currentUser;
     private final ProfileService profileService;
     private final AvatarStoragePort avatarStorage;
+    private final int maxImageBytes;
 
     public ProfileController(
             CurrentUser currentUser,
             ProfileService profileService,
-            AvatarStoragePort avatarStorage
+            AvatarStoragePort avatarStorage,
+            @Value("${app.supabase.storage.max-image-bytes:10485760}") int maxImageBytes
     ) {
         this.currentUser = currentUser;
         this.profileService = profileService;
         this.avatarStorage = avatarStorage;
+        this.maxImageBytes = maxImageBytes;
     }
 
     @GetMapping
@@ -82,6 +86,13 @@ public class ProfileController {
                     org.springframework.http.HttpStatus.BAD_REQUEST,
                     "INVALID_AVATAR_TYPE",
                     "이미지 파일만 업로드할 수 있습니다."
+            );
+        }
+        if (file.getSize() > maxImageBytes) {
+            throw new com.team2.wellness.common.api.ApiException(
+                    org.springframework.http.HttpStatus.PAYLOAD_TOO_LARGE,
+                    "FILE_TOO_LARGE",
+                    "이미지는 10MB 이하만 업로드할 수 있습니다."
             );
         }
         AvatarStoragePort.StoredAvatar stored = avatarStorage.storeAvatar(

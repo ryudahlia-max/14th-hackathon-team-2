@@ -5,13 +5,13 @@ import com.team2.wellness.engagement.ai.domain.AiGenerationJob;
 import com.team2.wellness.engagement.ai.persistence.AiGenerationJobRepository;
 import com.team2.wellness.engagement.chat.application.ChatService;
 import com.team2.wellness.engagement.chat.domain.ChatMessage;
-import com.team2.wellness.engagement.notification.domain.Notification;
-import com.team2.wellness.engagement.notification.persistence.NotificationRepository;
+import com.team2.wellness.engagement.notification.application.NotificationService;
 import com.team2.wellness.engagement.port.out.CoreAccessPort;
 import com.team2.wellness.engagement.port.out.ImageGenerationPort;
 import com.team2.wellness.engagement.port.out.MediaStoragePort;
 import com.team2.wellness.engagement.port.out.RealtimePublisherPort;
 import java.time.Instant;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.Optional;
@@ -29,7 +29,7 @@ public class AiGenerationService {
     private final MediaStoragePort storage;
     private final ImageGenerationPort images;
     private final ChatService chat;
-    private final NotificationRepository notifications;
+    private final NotificationService notifications;
     private final RealtimePublisherPort realtime;
     private final SafeFuturePromptBuilder prompts;
     private final TransactionTemplate tx;
@@ -40,7 +40,7 @@ public class AiGenerationService {
             MediaStoragePort storage,
             ImageGenerationPort images,
             ChatService chat,
-            NotificationRepository notifications,
+            NotificationService notifications,
             RealtimePublisherPort realtime,
             SafeFuturePromptBuilder prompts,
             TransactionTemplate tx
@@ -85,6 +85,7 @@ public class AiGenerationService {
         if (claimed == null) return Optional.empty();
 
         try {
+            validateRelationshipAndConsent(claimed);
             CoreAccessPort.MissedRoutineOccurrence occurrence = core
                     .getMissedRoutineOccurrence(claimed.getOccurrenceId(), claimed.getTargetUserId())
                     .orElseThrow(() -> new NonRetryable("MISSED_OCCURRENCE_NO_LONGER_AVAILABLE"));
@@ -95,6 +96,7 @@ public class AiGenerationService {
                     storage.read(face.objectKey()),
                     face.contentType()
             ));
+            validateRelationshipAndConsent(claimed);
             MediaStoragePort.StoredMedia stored = storage.storeAiOutput(
                     claimed.getTargetUserId(),
                     result.bytes(),
@@ -116,12 +118,26 @@ public class AiGenerationService {
         return jobs.findById(claimed.getId());
     }
 
+    public int recoverStaleRunning(Duration timeout) {
+        if (timeout == null || timeout.isNegative() || timeout.isZero()) {
+            throw new IllegalArgumentException("AI running timeout must be positive");
+        }
+        Integer recovered = tx.execute(status -> {
+            Instant now = Instant.now();
+            return (int) jobs.findStaleRunningForUpdate(now.minus(timeout), PageRequest.of(0, 100)).stream()
+                    .filter(job -> job.recoverStaleRun(now))
+                    .count();
+        });
+        return recovered == null ? 0 : recovered;
+    }
+
     private void complete(
             UUID jobId,
             CoreAccessPort.MissedRoutineOccurrence occurrence,
             String outputObjectKey
     ) {
         AiGenerationJob job = jobs.findById(jobId).orElseThrow();
+        validateRelationshipAndConsent(job);
         job.succeed(outputObjectKey);
         var room = chat.createDirect(job.getRequesterId(), job.getTargetUserId());
         String message = "%s 루틴을 최근 %d번 놓친 흐름을 반영한 미래 이미지예요."
@@ -132,11 +148,12 @@ public class AiGenerationService {
                 message,
                 outputObjectKey
         ));
-        notifications.save(new Notification(
+        notifications.createOnce(
                 job.getTargetUserId(),
                 "AI_COMPLETED",
-                "새로운 미래 이미지가 도착했어요."
-        ));
+                "새로운 미래 이미지가 도착했어요.",
+                "ai-completed:" + job.getId() + ":" + job.getTargetUserId()
+        );
         publish("ai-generation:" + job.getId(), "ai_generation.succeeded", new JobView(job));
     }
 
@@ -148,6 +165,15 @@ public class AiGenerationService {
         try {
             realtime.publish(topic, type, payload);
         } catch (RuntimeException ignored) {
+        }
+    }
+
+    private void validateRelationshipAndConsent(AiGenerationJob job) {
+        if (!core.areAcceptedFriends(job.getRequesterId(), job.getTargetUserId())) {
+            throw new NonRetryable("AI_FRIENDSHIP_REVOKED");
+        }
+        if (!core.hasAiImageConsent(job.getTargetUserId())) {
+            throw new NonRetryable("AI_CONSENT_REVOKED");
         }
     }
 

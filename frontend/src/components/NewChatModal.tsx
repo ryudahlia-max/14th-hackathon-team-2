@@ -1,25 +1,31 @@
 import { useState } from 'react';
 import { X, Check } from 'lucide-react';
 import type { Friend } from '../types/friend';
+import Avatar from './Avatar';
 
 interface Props {
   friends: Friend[];
-  onCreate: (friendIds: string[], groupName: string) => void;
+  onCreate: (friendIds: string[], groupName: string) => Promise<void>;
   onClose: () => void;
 }
 
 export default function NewChatModal({ friends, onCreate, onClose }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [groupName, setGroupName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   function toggleFriend(id: string) {
     setSelected(prev => (prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]));
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (selected.length === 0) return;
-    onCreate(selected, groupName.trim());
-    onClose();
+    setSubmitting(true);
+    try {
+      await onCreate(selected, groupName.trim());
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -53,7 +59,7 @@ export default function NewChatModal({ friends, onCreate, onClose }: Props) {
                   >
                     {checked && <Check size={11} color="white" strokeWidth={3} />}
                   </div>
-                  <div className="w-9 h-9 rounded-full bg-gray-300 shrink-0" />
+                  <Avatar friendId={friend.id} src={friend.avatarUrl} className="w-9 h-9" />
                   <span className="text-sm">{friend.name}</span>
                 </button>
               );
@@ -74,11 +80,11 @@ export default function NewChatModal({ friends, onCreate, onClose }: Props) {
         )}
 
         <button
-          onClick={handleSubmit}
-          disabled={selected.length === 0}
+          onClick={() => void handleSubmit()}
+          disabled={selected.length === 0 || submitting}
           className="w-full py-3 rounded-xl bg-[#a2bfff] text-white font-semibold text-sm disabled:opacity-40"
         >
-          만들기
+          {submitting ? '만드는 중...' : '만들기'}
         </button>
       </div>
     </div>

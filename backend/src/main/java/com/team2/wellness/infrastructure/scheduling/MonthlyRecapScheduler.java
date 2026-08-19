@@ -7,12 +7,15 @@ import com.team2.wellness.core.routine.RoutineCompletionRepository;
 import com.team2.wellness.core.routine.RoutineRepository;
 import com.team2.wellness.engagement.recap.application.MonthlyRecapService;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -27,24 +30,27 @@ public class MonthlyRecapScheduler {
     private final RoutineRepository routineRepository;
     private final RoutineCompletionRepository completionRepository;
     private final MonthlyRecapService monthlyRecapService;
+    private final ZoneId recapZone;
 
     public MonthlyRecapScheduler(
             WellnessGroupRepository groupRepository,
             GroupMemberRepository memberRepository,
             RoutineRepository routineRepository,
             RoutineCompletionRepository completionRepository,
-            MonthlyRecapService monthlyRecapService
+            MonthlyRecapService monthlyRecapService,
+            @Value("${app.recap.zone:Asia/Seoul}") String recapZone
     ) {
         this.groupRepository = groupRepository;
         this.memberRepository = memberRepository;
         this.routineRepository = routineRepository;
         this.completionRepository = completionRepository;
         this.monthlyRecapService = monthlyRecapService;
+        this.recapZone = ZoneId.of(recapZone);
     }
 
     @Scheduled(cron = "${app.recap.cron:0 5 0 1 * *}", zone = "${app.recap.zone:Asia/Seoul}")
     public void createPreviousMonthRecaps() {
-        YearMonth month = YearMonth.now().minusMonths(1);
+        YearMonth month = previousMonth(Instant.now());
         groupRepository.findAll().forEach(group -> {
             try {
                 monthlyRecapService.create(statistics(group.getId(), month));
@@ -52,6 +58,10 @@ public class MonthlyRecapScheduler {
                 log.error("Monthly recap failed for group {} and month {}", group.getId(), month, exception);
             }
         });
+    }
+
+    YearMonth previousMonth(Instant now) {
+        return YearMonth.from(now.atZone(recapZone)).minusMonths(1);
     }
 
     MonthlyRecapService.MonthlyGroupStats statistics(UUID groupId, YearMonth month) {

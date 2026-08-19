@@ -7,4 +7,7 @@ public interface AiGenerationJobRepository extends JpaRepository<AiGenerationJob
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select j from AiGenerationJob j where j.status = 'QUEUED' and j.nextAttemptAt <= :now order by j.nextAttemptAt") List<AiGenerationJob> findReadyForUpdate(@Param("now") Instant now, Pageable pageable);
     default List<AiGenerationJob> findReady(Instant now, Pageable pageable) { return findReadyForUpdate(now, pageable); }
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select j from AiGenerationJob j where j.status = 'RUNNING' and j.updatedAt < :cutoff order by j.updatedAt")
+    List<AiGenerationJob> findStaleRunningForUpdate(@Param("cutoff") Instant cutoff, Pageable pageable);
 }

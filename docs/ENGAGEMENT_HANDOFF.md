@@ -31,6 +31,9 @@ OPENAI_BASE_URL=https://api.openai.com
 # 기존 Supabase 설정으로 Storage/Realtime 어댑터가 사용
 SUPABASE_URL=
 SUPABASE_SECRET_KEY=
+AI_WORKER_RUNNING_TIMEOUT=PT10M
+ROUTINE_REMINDER_ENABLED=true
+ROUTINE_REMINDER_CRON=0 * * * * *
 ```
 
 현재 WebClient의 Spring property는 `app.openai.api-key`, `app.openai.base-url`이다. A는 application configuration에서 위 환경 변수에 매핑해야 한다. API key는 저장소, 로그, 클라이언트에 기록하면 안 된다.
@@ -53,7 +56,8 @@ Private 버킷: `avatars`, `chat-media`, `ai-results`.
 
 | Topic | Event | Payload |
 |---|---|---|
-| `chat-room:{roomId}` | `message.created` | `MessageView`: `id`, `roomId`, `senderId`, `type`, `content`, `mediaUrl`, `createdAt` |
+| `chat-room:{roomId}` | `message.created` | `MessageView`: `id`, `roomId`, `senderId`, `type`, `content`, `mediaUrl`, `createdAt`, `reactions` |
+| `chat-room:{roomId}` | `message.reaction.updated` | `ReactionEvent`: `messageId`, `userId`, `type`, `active` |
 | `ai-generation:{jobId}` | `ai_generation.succeeded` | `JobView`: `id`, `status`, `attemptCount`, `outputObjectKey`, `failureCode` |
 
 실시간 발행은 항상 DB 저장 후 시도한다. Realtime 실패는 저장된 메시지/작업/알림을 롤백하지 않는다.
@@ -122,6 +126,7 @@ PATCH /api/v1/engagement/notifications/read-all
 | `V100__create_chat_schema.sql` | `chat_rooms`, `chat_room_members`, `chat_messages`, `message_reactions` | 직접방 사용자쌍 unique, 그룹 unique, `chat_messages(room_id, created_at desc, id desc)`, `chat_room_members(user_id, room_id)` |
 | `V101__create_ai_generation_jobs_and_notifications.sql` | `ai_generation_jobs`, `notifications` | 요청자/client request unique, `ai_generation_jobs(status, next_attempt_at)`, `notifications(user_id, created_at desc, id desc)` |
 | `V102__add_notification_read_and_monthly_recaps.sql` | notification read 상태, `monthly_recaps` | `(group_id, recap_month)` unique |
+| `V103__add_notification_dedup_key.sql` | 알림 중복 방지 키 | `dedup_key` unique |
 
 각 테이블의 Supabase RLS 활성화와 정책은 Developer A 소유다.
 
@@ -134,6 +139,8 @@ PATCH /api/v1/engagement/notifications/read-all
 - 모든 애플리케이션 테이블은 RLS 활성화 및 브라우저 역할 권한 회수 대상이다.
 - private Realtime topic은 채팅방 멤버 또는 AI 작업 참여자만 구독할 수 있다.
 - 월간 recap과 AI worker scheduler가 연결되었다.
+- 오래된 `RUNNING` AI 작업은 기본 10분 후 재큐잉되며, 실행 직전과 결과 저장 전에 친구 관계·얼굴 사용 동의를 재검증한다.
+- 채팅·채팅 공감·루틴 리마인더 알림은 중복 방지 키로 한 번만 생성된다.
 - push webhook이 설정되지 않은 환경에서는 인앱 알림만 제공한다.
 
 현재 AI 요청의 `occurrenceId`는 Core의 `routineId`를 전달한다. Core 어댑터가 해당 루틴에서

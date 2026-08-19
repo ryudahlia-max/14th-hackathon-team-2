@@ -158,6 +158,7 @@ public class RoutineController {
     record RoutineRequest(
             @NotBlank @Size(max = 80) String title,
             @NotBlank @Size(max = 30) String category,
+            @jakarta.validation.constraints.Pattern(regexp = "^#[0-9A-Fa-f]{6}$") String color,
             @NotEmpty Set<DayOfWeek> daysOfWeek,
             @NotNull LocalTime reminderTime,
             @NotBlank String timezone,
@@ -168,6 +169,7 @@ public class RoutineController {
             return new RoutineService.RoutineCommand(
                     title,
                     category,
+                    color,
                     daysOfWeek,
                     reminderTime,
                     timezone,
@@ -191,6 +193,7 @@ public class RoutineController {
             UUID id,
             String title,
             String category,
+            String color,
             Set<DayOfWeek> daysOfWeek,
             LocalTime reminderTime,
             String timezone,
@@ -203,6 +206,7 @@ public class RoutineController {
                     routine.getId(),
                     routine.getTitle(),
                     routine.getCategory(),
+                    routine.getColor(),
                     routine.getDaysOfWeek(),
                     routine.getReminderTime(),
                     routine.getTimezone(),

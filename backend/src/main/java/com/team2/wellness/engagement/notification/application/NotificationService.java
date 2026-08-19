@@ -26,17 +26,42 @@ public class NotificationService {
     }
 
     public Notification create(UUID user, String type, String content) {
-        Notification notification = repo.save(new Notification(user, type, content));
+        return persistAndPush(new Notification(user, type, content));
+    }
+
+    public Notification createOnce(UUID user, String type, String content, String dedupKey) {
+        if (dedupKey == null || dedupKey.isBlank()) {
+            return create(user, type, content);
+        }
+        Notification existing = repo.findByDedupKey(dedupKey).orElse(null);
+        if (existing != null) {
+            return existing;
+        }
+        UUID notificationId = UUID.randomUUID();
+        int inserted = repo.insertIfAbsent(notificationId, user, type, content, dedupKey, Instant.now());
+        Notification notification = repo.findByDedupKey(dedupKey).orElseThrow();
+        if (inserted == 1) {
+            push(notification);
+        }
+        return notification;
+    }
+
+    private Notification persistAndPush(Notification notification) {
+        notification = repo.saveAndFlush(notification);
+        push(notification);
+        return notification;
+    }
+
+    private void push(Notification notification) {
         try {
             push.send(new PushNotificationPort.PushCommand(
-                    user,
+                    notification.getUserId(),
                     "Wellness",
-                    content,
+                    notification.getContent(),
                     Map.of("notificationId", notification.getId().toString())
             ));
         } catch (RuntimeException ignored) {
         }
-        return notification;
     }
 
     public List<Notification> page(UUID user, Instant cursorAt, UUID cursorId, int size) {

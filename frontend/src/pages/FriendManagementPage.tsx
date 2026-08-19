@@ -6,6 +6,7 @@ import CreateGroupModal from '../components/CreateGroupModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { getFriends, getGroups, removeFriend } from '../api/friend';
 import type { Friend, Group } from '../types/friend';
+import Avatar from '../components/Avatar';
 
 type ManagementTab = 'friends' | 'groups';
 
@@ -43,7 +44,7 @@ function FriendRow({
 }) {
   return (
     <div className="flex w-full items-center gap-3">
-      <div className="size-12 shrink-0 rounded-full bg-gray-300" />
+      <Avatar friendId={friend.id} src={friend.avatarUrl} className="size-12" />
       <p className="flex-1 truncate text-sm text-black">{friend.name}</p>
       <div className="flex shrink-0 gap-2">
         <ActionButton label="삭제" onClick={() => onDelete(friend)} />

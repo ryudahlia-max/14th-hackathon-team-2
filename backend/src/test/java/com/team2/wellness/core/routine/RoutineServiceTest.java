@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.mockito.ArgumentCaptor;
 
 import com.team2.wellness.common.api.ApiException;
 import java.time.DayOfWeek;
@@ -52,12 +53,36 @@ class RoutineServiceTest {
     }
 
     @Test
+    void createKeepsSemanticCategorySeparateFromDisplayColor() {
+        UUID userId = UUID.randomUUID();
+        when(routineRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        RoutineService.RoutineCommand command = new RoutineService.RoutineCommand(
+                "물 마시기",
+                "HYDRATION",
+                "#34D399",
+                EnumSet.allOf(DayOfWeek.class),
+                LocalTime.of(9, 0),
+                "Asia/Seoul",
+                LocalDate.of(2026, 8, 1),
+                null
+        );
+
+        service.create(userId, command);
+
+        ArgumentCaptor<Routine> captor = ArgumentCaptor.forClass(Routine.class);
+        verify(routineRepository).save(captor.capture());
+        assertThat(captor.getValue().getCategory()).isEqualTo("HYDRATION");
+        assertThat(captor.getValue().getColor()).isEqualTo("#34D399");
+    }
+
+    @Test
     void rejectsCompletionOnUnscheduledDay() {
         UUID userId = UUID.randomUUID();
         Routine routine = new Routine(
                 userId,
                 "주말 산책",
                 "MOVEMENT",
+                "#60A5FA",
                 EnumSet.of(DayOfWeek.SATURDAY),
                 LocalTime.of(9, 0),
                 "Asia/Seoul",
@@ -137,6 +162,7 @@ class RoutineServiceTest {
                 userId,
                 "아침 물 마시기",
                 "수분",
+                "#60A5FA",
                 EnumSet.allOf(DayOfWeek.class),
                 LocalTime.of(9, 0),
                 "Asia/Seoul",
@@ -167,6 +193,7 @@ class RoutineServiceTest {
                 userId,
                 "물 마시기",
                 "WATER",
+                "#60A5FA",
                 EnumSet.allOf(DayOfWeek.class),
                 LocalTime.of(9, 0),
                 "Asia/Seoul",

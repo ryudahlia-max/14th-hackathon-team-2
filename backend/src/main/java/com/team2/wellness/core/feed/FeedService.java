@@ -6,6 +6,7 @@ import com.team2.wellness.core.friend.FriendshipService;
 import com.team2.wellness.core.group.GroupMember;
 import com.team2.wellness.core.group.GroupMemberRepository;
 import com.team2.wellness.core.profile.Profile;
+import com.team2.wellness.core.profile.AvatarStoragePort;
 import com.team2.wellness.core.profile.ProfileRepository;
 import com.team2.wellness.core.routine.Routine;
 import com.team2.wellness.core.routine.RoutineCompletion;
@@ -34,6 +35,7 @@ public class FeedService {
     private final RoutineRepository routineRepository;
     private final ProfileRepository profileRepository;
     private final RoutineCompletionReactionRepository reactionRepository;
+    private final AvatarStoragePort avatarStorage;
 
     public FeedService(
             FriendshipService friendshipService,
@@ -41,7 +43,8 @@ public class FeedService {
             RoutineCompletionRepository completionRepository,
             RoutineRepository routineRepository,
             ProfileRepository profileRepository,
-            RoutineCompletionReactionRepository reactionRepository
+            RoutineCompletionReactionRepository reactionRepository,
+            AvatarStoragePort avatarStorage
     ) {
         this.friendshipService = friendshipService;
         this.memberRepository = memberRepository;
@@ -49,6 +52,7 @@ public class FeedService {
         this.routineRepository = routineRepository;
         this.profileRepository = profileRepository;
         this.reactionRepository = reactionRepository;
+        this.avatarStorage = avatarStorage;
     }
 
     public CursorPage<FeedItem> feed(UUID userId, String cursorValue, int requestedLimit) {
@@ -79,6 +83,7 @@ public class FeedService {
                     completion.getId(),
                     completion.getUserId(),
                     profile == null ? "알 수 없는 사용자" : profile.getNickname(),
+                    avatarUrl(profile),
                     completion.getRoutineId(),
                     routine == null ? "삭제된 루틴" : routine.getTitle(),
                     completion.getCompletionDate(),
@@ -93,6 +98,15 @@ public class FeedService {
                 ? page.get(page.size() - 1).getCompletedAt().toString()
                 : null;
         return new CursorPage<>(items, nextCursor);
+    }
+
+    private String avatarUrl(Profile profile) {
+        if (profile == null || profile.getAvatarObjectPath() == null) return null;
+        try {
+            return avatarStorage.temporaryDownloadUrl(profile.getAvatarObjectPath());
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     private Set<UUID> visibleUserIds(UUID userId) {
@@ -122,6 +136,7 @@ public class FeedService {
             UUID completionId,
             UUID userId,
             String nickname,
+            String avatarUrl,
             UUID routineId,
             String routineTitle,
             java.time.LocalDate completionDate,

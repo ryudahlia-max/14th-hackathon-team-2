@@ -29,6 +29,9 @@ public class Routine {
     @Column(nullable = false, length = 30)
     private String category;
 
+    @Column(nullable = false, length = 7)
+    private String color;
+
     @Column(name = "days_of_week", nullable = false, length = 80)
     private String daysOfWeek;
 
@@ -60,6 +63,7 @@ public class Routine {
             UUID ownerId,
             String title,
             String category,
+            String color,
             Set<DayOfWeek> daysOfWeek,
             LocalTime reminderTime,
             String timezone,
@@ -71,6 +75,7 @@ public class Routine {
         this.ownerId = ownerId;
         this.title = title;
         this.category = category;
+        this.color = color;
         this.daysOfWeek = serializeDays(daysOfWeek);
         this.reminderTime = reminderTime;
         this.timezone = timezone;
@@ -84,6 +89,7 @@ public class Routine {
     public void update(
             String title,
             String category,
+            String color,
             Set<DayOfWeek> daysOfWeek,
             LocalTime reminderTime,
             String timezone,
@@ -93,6 +99,7 @@ public class Routine {
     ) {
         this.title = title;
         this.category = category;
+        this.color = color;
         this.daysOfWeek = serializeDays(daysOfWeek);
         this.reminderTime = reminderTime;
         this.timezone = timezone;
@@ -136,6 +143,10 @@ public class Routine {
 
     public String getCategory() {
         return category;
+    }
+
+    public String getColor() {
+        return color;
     }
 
     public LocalTime getReminderTime() {

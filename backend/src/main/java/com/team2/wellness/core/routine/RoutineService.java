@@ -40,6 +40,7 @@ public class RoutineService {
                 userId,
                 command.title().trim(),
                 command.category().trim(),
+                normalizeColor(command.color()),
                 command.daysOfWeek(),
                 command.reminderTime(),
                 command.timezone(),
@@ -54,6 +55,7 @@ public class RoutineService {
         routine.update(
                 command.title().trim(),
                 command.category().trim(),
+                normalizeColor(command.color()),
                 command.daysOfWeek(),
                 command.reminderTime(),
                 command.timezone(),
@@ -199,9 +201,18 @@ public class RoutineService {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
+    private String normalizeColor(String value) {
+        String color = value == null || value.isBlank() ? "#60A5FA" : value.trim().toUpperCase();
+        if (!color.matches("^#[0-9A-F]{6}$")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "INVALID_ROUTINE_COLOR", "루틴 색상 형식을 확인해 주세요.");
+        }
+        return color;
+    }
+
     public record RoutineCommand(
             String title,
             String category,
+            String color,
             Set<DayOfWeek> daysOfWeek,
             java.time.LocalTime reminderTime,
             String timezone,

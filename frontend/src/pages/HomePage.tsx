@@ -39,15 +39,15 @@ function monthKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function colorOf(category: string) {
-  return /^#[0-9A-F]{6}$/i.test(category) ? category : '#60A5FA';
+function colorOf(color: string) {
+  return /^#[0-9A-F]{6}$/i.test(color) ? color : '#60A5FA';
 }
 
 function toRoutine(response: RoutineResponse): Routine {
   return {
     id: response.id,
     name: response.title,
-    color: colorOf(response.category),
+    color: colorOf(response.color),
     totalCount: 1,
     api: response,
   };
@@ -116,10 +116,10 @@ export default function HomePage() {
 
   useEffect(() => { void loadData(); }, [loadData]);
 
-  async function handleSaveRoutine(name: string, color: string) {
+  async function handleSaveRoutine(name: string, category: string, color: string) {
     try {
-      if (editingRoutine?.api) await updateRoutine(editingRoutine.api, name, color);
-      else await createRoutine(name, color, selectedDay);
+      if (editingRoutine?.api) await updateRoutine(editingRoutine.api, name, category, color);
+      else await createRoutine(name, category, color, selectedDay);
       await loadData();
     } catch (saveError) {
       console.error(saveError);

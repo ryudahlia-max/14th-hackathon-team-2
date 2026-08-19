@@ -5,6 +5,7 @@ export interface FeedItem {
   completionId: string;
   userId: string;
   nickname: string;
+  avatarUrl: string | null;
   routineId: string;
   routineTitle: string;
   completionDate: string;
@@ -18,6 +19,7 @@ export interface ReceivedReaction {
   completionId: string;
   reactorId: string;
   reactorNickname: string;
+  reactorAvatarUrl: string | null;
   routineTitle: string;
   type: string;
   createdAt: string;
