@@ -119,7 +119,7 @@ export default function HomePage() {
   async function handleSaveRoutine(name: string, color: string) {
     try {
       if (editingRoutine?.api) await updateRoutine(editingRoutine.api, name, color);
-      else await createRoutine(name, color);
+      else await createRoutine(name, color, selectedDay);
       await loadData();
     } catch (saveError) {
       console.error(saveError);

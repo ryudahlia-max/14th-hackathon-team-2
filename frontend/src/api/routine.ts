@@ -30,14 +30,14 @@ export interface MissedRoutineResponse {
 
 const ALL_DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 
-function payload(title: string, category: string, existing?: RoutineResponse) {
+function payload(title: string, category: string, startDate: string, existing?: RoutineResponse) {
   return {
     title,
     category,
     daysOfWeek: existing?.daysOfWeek ?? ALL_DAYS,
     reminderTime: existing?.reminderTime ?? '09:00:00',
     timezone: existing?.timezone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul'),
-    startDate: existing?.startDate ?? new Date().toISOString().slice(0, 10),
+    startDate: existing?.startDate ?? startDate,
     endDate: existing?.endDate ?? null,
   };
 }
@@ -45,11 +45,11 @@ function payload(title: string, category: string, existing?: RoutineResponse) {
 export const getRoutines = () => api.get<RoutineResponse[]>('/api/v1/routines');
 export const getFriendRoutines = (friendId: string) =>
   api.get<RoutineResponse[]>(`/api/v1/routines/friends/${friendId}`);
-export const createRoutine = (title: string, category: string) =>
-  api.post<RoutineResponse>('/api/v1/routines', payload(title, category));
+export const createRoutine = (title: string, category: string, startDate: string) =>
+  api.post<RoutineResponse>('/api/v1/routines', payload(title, category, startDate));
 export const updateRoutine = (routine: RoutineResponse, title: string, category: string) =>
   api.patch<RoutineResponse>(`/api/v1/routines/${routine.id}`, {
-    routine: payload(title, category, routine),
+    routine: payload(title, category, routine.startDate, routine),
     active: routine.active,
   });
 export const deleteRoutine = (id: string) => api.delete<void>(`/api/v1/routines/${id}`);
