@@ -7,10 +7,12 @@ import NewChatModal from '../components/NewChatModal';
 import { createGroup, getFriends } from '../api/friend';
 import { createDirectRoom, createGroupRoom, getChatRooms, type ChatRoomResponse } from '../api/chat';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
+import { useAuth } from '../auth/authState';
 import type { Friend } from '../types/friend';
 
 export default function MessagesPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [chats, setChats] = useState<ChatRoomResponse[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [showNewChat, setShowNewChat] = useState(false);
@@ -21,6 +23,8 @@ export default function MessagesPage() {
       .then(([rooms, friendList]) => { setChats(rooms); setFriends(friendList); })
       .catch(loadError => { console.error(loadError); setError('채팅 목록을 불러오지 못했습니다.'); });
   }, []);
+
+  const avatarByFriendId = new Map(friends.map(friend => [friend.id, friend.avatarUrl]));
 
   async function handleCreateChat(friendIds: string[], groupName: string) {
     try {
@@ -46,9 +50,11 @@ export default function MessagesPage() {
       </div>
       {error && <p className="px-7 pb-2 text-xs text-red-500">{error}</p>}
       <div className="flex-1 overflow-y-auto">
-        {conversations.map(chat => (
+        {conversations.map(chat => {
+          const otherMemberId = chat.memberIds.find(id => id !== user?.id) ?? chat.memberIds[0] ?? '';
+          return (
           <button key={chat.id} onClick={() => navigate(`/messages/${chat.id}`)} className="w-full flex items-center gap-3 px-7 py-3 border-b border-gray-100 text-left">
-            <Avatar friendId={chat.memberIds[0] ?? ''} className="w-12 h-12" />
+            <Avatar friendId={otherMemberId} src={avatarByFriendId.get(otherMemberId)} className="w-12 h-12" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{chat.name}</span>
@@ -57,7 +63,8 @@ export default function MessagesPage() {
               <p className="text-sm text-gray-500 truncate">{chat.lastMessage?.content ?? (chat.lastMessage?.mediaUrl ? '사진을 보냈어요' : '아직 대화가 없어요')}</p>
             </div>
           </button>
-        ))}
+          );
+        })}
       </div>
       <AppNavigationBar />
       {showNewChat && <NewChatModal friends={friends} onCreate={handleCreateChat} onClose={() => setShowNewChat(false)} />}
