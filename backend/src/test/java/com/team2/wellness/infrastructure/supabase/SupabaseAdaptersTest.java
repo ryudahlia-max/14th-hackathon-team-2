@@ -59,6 +59,25 @@ class SupabaseAdaptersTest {
     }
 
     @Test
+    void signedStoragePathIsResolvedAgainstStorageApiBase() throws InterruptedException {
+        server.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "application/json")
+                .setBody("""
+                        {"signedURL":"/object/sign/avatars/user/avatar.png?token=test"}
+                        """));
+        SupabaseMediaStorageAdapter adapter = storageAdapter("sb_secret_test");
+
+        String signedUrl = adapter.temporaryDownloadUrl("avatars/user/avatar.png");
+
+        assertThat(signedUrl).isEqualTo(
+                server.url("/storage/v1/object/sign/avatars/user/avatar.png?token=test").toString()
+        );
+        RecordedRequest request = server.takeRequest();
+        assertThat(request.getPath()).isEqualTo("/storage/v1/object/sign/avatars/user/avatar.png");
+    }
+
+    @Test
     void realtimeBroadcastUsesPrivateTopicRestEndpoint() throws InterruptedException {
         server.enqueue(new MockResponse().setResponseCode(202));
         SupabaseRealtimePublisherAdapter adapter = new SupabaseRealtimePublisherAdapter(
