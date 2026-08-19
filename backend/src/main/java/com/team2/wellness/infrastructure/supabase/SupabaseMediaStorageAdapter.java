@@ -136,7 +136,7 @@ public class SupabaseMediaStorageAdapter implements MediaStoragePort, AvatarStor
         }
         return response.signedUrl().startsWith("http")
                 ? response.signedUrl()
-                : supabaseUrl + "/storage/v1" + response.signedUrl();
+                : supabaseUrl + response.signedUrl();
     }
 
     private StoredMedia store(String bucket, String path, byte[] bytes, String contentType) {
