@@ -29,7 +29,7 @@ public class Routine {
     @Column(nullable = false, length = 30)
     private String category;
 
-    @Column(name = "days_of_week", nullable = false, length = 30)
+    @Column(name = "days_of_week", nullable = false, length = 80)
     private String daysOfWeek;
 
     @Column(name = "reminder_time", nullable = false)

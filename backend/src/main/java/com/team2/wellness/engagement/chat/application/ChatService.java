@@ -39,7 +39,23 @@ public class ChatService {
         return room;
     }
     public List<RoomView> rooms(UUID userId) { return members.findAllByUserIdOrderByJoinedAtDesc(userId).stream().map(m -> rooms.findById(m.getRoomId()).map(room -> roomView(userId, room)).orElse(null)).filter(Objects::nonNull).toList(); }
-    public MessagePage messages(UUID userId, UUID roomId, Instant cursorAt, UUID cursorId, int size) { requireMember(roomId, userId); List<ChatMessage> page = messages.findPage(roomId, cursorAt, cursorId, PageRequest.of(0, Math.min(Math.max(size, 1), 100))); MessageView next = page.isEmpty() ? null : messageView(page.getLast()); return new MessagePage(page.stream().map(this::messageView).toList(), next == null ? null : next.createdAt(), next == null ? null : next.id()); }
+    public MessagePage messages(UUID userId, UUID roomId, Instant cursorAt, UUID cursorId, int size) {
+        requireMember(roomId, userId);
+        if ((cursorAt == null) != (cursorId == null)) {
+            throw bad("INVALID_CURSOR", "Both cursorCreatedAt and cursorId are required.");
+        }
+
+        PageRequest pageRequest = PageRequest.of(0, Math.min(Math.max(size, 1), 100));
+        List<ChatMessage> page = cursorAt == null
+                ? messages.findByRoomIdOrderByCreatedAtDescIdDesc(roomId, pageRequest)
+                : messages.findPageBefore(roomId, cursorAt, cursorId, pageRequest);
+        MessageView next = page.isEmpty() ? null : messageView(page.getLast());
+        return new MessagePage(
+                page.stream().map(this::messageView).toList(),
+                next == null ? null : next.createdAt(),
+                next == null ? null : next.id()
+        );
+    }
     public MessageView send(UUID userId, UUID roomId, SendCommand command) {
         requireMember(roomId, userId);
         if (command.clientMessageId() != null && !command.clientMessageId().isBlank()) { Optional<ChatMessage> existing = messages.findByRoomIdAndSenderIdAndClientMessageId(roomId, userId, command.clientMessageId()); if (existing.isPresent()) return messageView(existing.get()); }

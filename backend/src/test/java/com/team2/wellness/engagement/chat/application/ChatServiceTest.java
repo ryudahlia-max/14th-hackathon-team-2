@@ -10,6 +10,7 @@ import com.team2.wellness.engagement.chat.persistence.*;
 import com.team2.wellness.engagement.port.out.CoreAccessPort;
 import com.team2.wellness.engagement.port.out.MediaStoragePort;
 import com.team2.wellness.engagement.port.out.RealtimePublisherPort;
+import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,40 @@ class ChatServiceTest {
     @Test void duplicateDirectRoomUsesExistingRoom() { UUID user = UUID.randomUUID(), target = UUID.randomUUID(); core.friends = true; ChatRoom existing = ChatRoom.direct(user, target); when(rooms.findByDirectPairKey(anyString())).thenReturn(Optional.of(existing)); assertThat(service.createDirect(user, target).getId()).isEqualTo(existing.getId()); verify(rooms, never()).save(any()); }
     @Test void unauthorizedUserCannotSend() { UUID user = UUID.randomUUID(), roomId = UUID.randomUUID(); when(rooms.findById(roomId)).thenReturn(Optional.of(ChatRoom.direct(user, UUID.randomUUID()))); when(members.existsByRoomIdAndUserId(roomId, user)).thenReturn(false); assertThatThrownBy(() -> service.send(user, roomId, new ChatService.SendCommand("c", ChatMessage.Type.TEXT, "hello", null))).isInstanceOf(ApiException.class).extracting(e -> ((ApiException)e).code()).isEqualTo("CHAT_ROOM_ACCESS_DENIED"); }
     @Test void unauthorizedUserCannotRead() { UUID user = UUID.randomUUID(), roomId = UUID.randomUUID(); when(rooms.findById(roomId)).thenReturn(Optional.of(ChatRoom.direct(user, UUID.randomUUID()))); when(members.existsByRoomIdAndUserId(roomId, user)).thenReturn(false); assertThatThrownBy(() -> service.messages(user, roomId, null, null, 30)).isInstanceOf(ApiException.class).extracting(e -> ((ApiException)e).code()).isEqualTo("CHAT_ROOM_ACCESS_DENIED"); verifyNoInteractions(messages); }
+    @Test void firstMessagePageDoesNotBindNullCursor() {
+        UUID user = UUID.randomUUID(), roomId = UUID.randomUUID();
+        when(rooms.findById(roomId)).thenReturn(Optional.of(ChatRoom.direct(user, UUID.randomUUID())));
+        when(members.existsByRoomIdAndUserId(roomId, user)).thenReturn(true);
+        when(messages.findByRoomIdOrderByCreatedAtDescIdDesc(eq(roomId), any())).thenReturn(List.of());
+
+        assertThat(service.messages(user, roomId, null, null, 30).items()).isEmpty();
+
+        verify(messages).findByRoomIdOrderByCreatedAtDescIdDesc(eq(roomId), any());
+        verify(messages, never()).findPageBefore(any(), any(), any(), any());
+    }
+    @Test void cursorMessagePageUsesTypedCursorQuery() {
+        UUID user = UUID.randomUUID(), roomId = UUID.randomUUID(), cursorId = UUID.randomUUID();
+        Instant cursorAt = Instant.now();
+        when(rooms.findById(roomId)).thenReturn(Optional.of(ChatRoom.direct(user, UUID.randomUUID())));
+        when(members.existsByRoomIdAndUserId(roomId, user)).thenReturn(true);
+        when(messages.findPageBefore(eq(roomId), eq(cursorAt), eq(cursorId), any())).thenReturn(List.of());
+
+        assertThat(service.messages(user, roomId, cursorAt, cursorId, 30).items()).isEmpty();
+
+        verify(messages).findPageBefore(eq(roomId), eq(cursorAt), eq(cursorId), any());
+        verify(messages, never()).findByRoomIdOrderByCreatedAtDescIdDesc(any(), any());
+    }
+    @Test void incompleteMessageCursorIsRejected() {
+        UUID user = UUID.randomUUID(), roomId = UUID.randomUUID();
+        when(rooms.findById(roomId)).thenReturn(Optional.of(ChatRoom.direct(user, UUID.randomUUID())));
+        when(members.existsByRoomIdAndUserId(roomId, user)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.messages(user, roomId, Instant.now(), null, 30))
+                .isInstanceOf(ApiException.class)
+                .extracting(error -> ((ApiException) error).code())
+                .isEqualTo("INVALID_CURSOR");
+        verifyNoInteractions(messages);
+    }
     @Test void duplicateClientMessageReturnsExistingMessage() { UUID user = UUID.randomUUID(), room = UUID.randomUUID(); ChatMessage existing = new ChatMessage(room, user, "client-1", ChatMessage.Type.TEXT, "first", null); when(rooms.findById(room)).thenReturn(Optional.of(ChatRoom.direct(user, UUID.randomUUID()))); when(members.existsByRoomIdAndUserId(room, user)).thenReturn(true); when(messages.findByRoomIdAndSenderIdAndClientMessageId(room, user, "client-1")).thenReturn(Optional.of(existing)); assertThat(service.send(user, room, new ChatService.SendCommand("client-1", ChatMessage.Type.TEXT, "retry", null)).id()).isEqualTo(existing.getId()); verify(messages, never()).save(any()); }
     @Test void realtimeFailureDoesNotRemovePersistedMessage() { UUID user = UUID.randomUUID(), room = UUID.randomUUID(); when(rooms.findById(room)).thenReturn(Optional.of(ChatRoom.direct(user, UUID.randomUUID()))); when(members.existsByRoomIdAndUserId(room, user)).thenReturn(true); when(messages.save(any())).thenAnswer(invocation -> invocation.getArgument(0)); realtime.fail = true; assertThat(service.send(user, room, new ChatService.SendCommand("client-2", ChatMessage.Type.TEXT, "saved", null)).content()).isEqualTo("saved"); verify(messages).save(any(ChatMessage.class)); }
     @Test void nonMemberCannotCreateGroupRoom() { assertThatThrownBy(() -> service.createGroup(UUID.randomUUID(), UUID.randomUUID())).isInstanceOf(ApiException.class).extracting(e -> ((ApiException)e).code()).isEqualTo("GROUP_ROOM_REQUIRES_MEMBERSHIP"); }
