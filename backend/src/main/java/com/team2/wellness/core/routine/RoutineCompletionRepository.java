@@ -41,10 +41,10 @@ public interface RoutineCompletionRepository extends JpaRepository<RoutineComple
     @Query("""
             select completion from RoutineCompletion completion
             where completion.userId in :userIds
-              and (:cursor is null or completion.completedAt < :cursor)
+              and completion.completedAt < :cursor
             order by completion.completedAt desc, completion.id desc
             """)
-    List<RoutineCompletion> findFeed(
+    List<RoutineCompletion> findFeedBefore(
             @Param("userIds") Collection<UUID> userIds,
             @Param("cursor") Instant cursor,
             Pageable pageable

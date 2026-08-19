@@ -55,11 +55,10 @@ public class FeedService {
         int limit = Math.max(1, Math.min(requestedLimit, 50));
         Instant cursor = parseCursor(cursorValue);
         Set<UUID> visibleUserIds = visibleUserIds(userId);
-        List<RoutineCompletion> completions = completionRepository.findFeed(
-                visibleUserIds,
-                cursor,
-                PageRequest.of(0, limit + 1)
-        );
+        PageRequest pageRequest = PageRequest.of(0, limit + 1);
+        List<RoutineCompletion> completions = cursor == null
+                ? completionRepository.findAllByUserIdInOrderByCompletedAtDesc(visibleUserIds, pageRequest)
+                : completionRepository.findFeedBefore(visibleUserIds, cursor, pageRequest);
         boolean hasNext = completions.size() > limit;
         List<RoutineCompletion> page = hasNext ? completions.subList(0, limit) : completions;
 
