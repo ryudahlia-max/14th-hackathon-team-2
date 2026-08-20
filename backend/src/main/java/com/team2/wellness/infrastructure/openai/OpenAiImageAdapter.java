@@ -14,6 +14,7 @@ import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import reactor.core.publisher.Mono;
 
@@ -79,7 +80,7 @@ public class OpenAiImageAdapter implements ImageGenerationPort {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(new GenerationRequest(model, prompt, "1024x1024"))
                 .retrieve()
-                .onStatus(status -> status.value() == 429, response -> retryable("OPENAI_RATE_LIMIT"))
+                .onStatus(status -> status.value() == 429, this::classifyRateLimit)
                 .onStatus(status -> status.is5xxServerError(), response -> retryable("OPENAI_SERVER_ERROR"))
                 .onStatus(status -> status.is4xxClientError(), response -> nonRetryable("OPENAI_REJECTED"))
                 .bodyToMono(OpenAiImageResponse.class)
@@ -101,7 +102,7 @@ public class OpenAiImageAdapter implements ImageGenerationPort {
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(BodyInserters.fromMultipartData(multipart.build()))
                 .retrieve()
-                .onStatus(status -> status.value() == 429, response -> retryable("OPENAI_RATE_LIMIT"))
+                .onStatus(status -> status.value() == 429, this::classifyRateLimit)
                 .onStatus(status -> status.is5xxServerError(), response -> retryable("OPENAI_SERVER_ERROR"))
                 .onStatus(status -> status.is4xxClientError(), response -> nonRetryable("OPENAI_REJECTED"))
                 .bodyToMono(OpenAiImageResponse.class)
@@ -118,6 +119,35 @@ public class OpenAiImageAdapter implements ImageGenerationPort {
 
     private Mono<? extends Throwable> nonRetryable(String code) {
         return Mono.just(new ImageGenerationException(code, false));
+    }
+
+    private Mono<? extends Throwable> classifyRateLimit(ClientResponse response) {
+        return response.bodyToMono(OpenAiErrorResponse.class)
+                .defaultIfEmpty(new OpenAiErrorResponse(null))
+                .map(body -> {
+                    OpenAiError error = body.error();
+                    String code = error == null ? null : error.code();
+                    String message = error == null ? null : error.message();
+                    if (requiresBilling(code, message)) {
+                        return new ImageGenerationException("OPENAI_BILLING_REQUIRED", false);
+                    }
+                    return new ImageGenerationException("OPENAI_RATE_LIMIT", true);
+                });
+    }
+
+    private boolean requiresBilling(String code, String message) {
+        if (code != null && (code.equals("credit_balance_exhausted")
+                || code.equals("organization_spend_limit_exceeded")
+                || code.equals("project_spend_limit_exceeded")
+                || code.equals("organization_usage_limit_exceeded")
+                || code.equals("insufficient_quota"))) {
+            return true;
+        }
+        if (message == null) return false;
+        String normalized = message.toLowerCase();
+        return normalized.contains("limit 0")
+                || normalized.contains("payment method")
+                || normalized.contains("billing");
     }
 
     private MediaType safeMediaType(String contentType) {
@@ -149,6 +179,12 @@ public class OpenAiImageAdapter implements ImageGenerationPort {
     }
 
     private record ImageData(@JsonProperty("b64_json") String base64Json) {
+    }
+
+    private record OpenAiErrorResponse(OpenAiError error) {
+    }
+
+    private record OpenAiError(String message, String type, String code) {
     }
 
     private static final class NamedByteArrayResource extends ByteArrayResource {

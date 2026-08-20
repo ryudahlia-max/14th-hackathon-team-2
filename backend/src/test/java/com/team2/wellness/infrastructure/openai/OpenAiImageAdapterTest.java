@@ -95,4 +95,22 @@ class OpenAiImageAdapterTest {
                     assertThat(exception.retryable()).isFalse();
                 });
     }
+
+    @Test
+    void zeroProviderLimitIsReportedAsBillingRequiredWithoutRetry() {
+        server.enqueue(new MockResponse()
+                .setResponseCode(429)
+                .setHeader("Content-Type", "application/json")
+                .setBody("""
+                        {"error":{"type":"tokens","code":"rate_limit_exceeded",
+                        "message":"Limit 0. You can increase your rate limit by adding a payment method."}}
+                        """));
+
+        assertThatThrownBy(() -> adapter.generate(new ImageGenerationPort.ImageCommand(
+                "prompt", new byte[0], "image/png"
+        ))).isInstanceOfSatisfying(ImageGenerationException.class, exception -> {
+            assertThat(exception.code()).isEqualTo("OPENAI_BILLING_REQUIRED");
+            assertThat(exception.retryable()).isFalse();
+        });
+    }
 }

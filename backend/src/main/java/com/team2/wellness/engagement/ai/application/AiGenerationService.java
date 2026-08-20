@@ -17,6 +17,7 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -33,6 +34,7 @@ public class AiGenerationService {
     private final RealtimePublisherPort realtime;
     private final SafeFuturePromptBuilder prompts;
     private final TransactionTemplate tx;
+    private final int dailyLimit;
 
     public AiGenerationService(
             AiGenerationJobRepository jobs,
@@ -43,7 +45,8 @@ public class AiGenerationService {
             NotificationService notifications,
             RealtimePublisherPort realtime,
             SafeFuturePromptBuilder prompts,
-            TransactionTemplate tx
+            TransactionTemplate tx,
+            @Value("${app.ai.daily-limit:3}") int dailyLimit
     ) {
         this.jobs = jobs;
         this.core = core;
@@ -54,6 +57,7 @@ public class AiGenerationService {
         this.realtime = realtime;
         this.prompts = prompts;
         this.tx = tx;
+        this.dailyLimit = dailyLimit;
     }
 
     public AiGenerationJob request(UUID requester, UUID target, UUID occurrence, String clientRequestId) {
@@ -70,7 +74,8 @@ public class AiGenerationService {
                 throw fail(HttpStatus.BAD_REQUEST, "MISSED_OCCURRENCE_REQUIRED");
             }
             Instant startOfDay = LocalDate.now(ZoneOffset.UTC).atStartOfDay().toInstant(ZoneOffset.UTC);
-            if (jobs.countByRequesterIdAndCreatedAtGreaterThanEqual(requester, startOfDay) >= 3) {
+            if (dailyLimit > 0
+                    && jobs.countByRequesterIdAndCreatedAtGreaterThanEqual(requester, startOfDay) >= dailyLimit) {
                 throw fail(HttpStatus.TOO_MANY_REQUESTS, "AI_DAILY_LIMIT");
             }
             return jobs.save(new AiGenerationJob(requester, target, occurrence, clientRequestId));

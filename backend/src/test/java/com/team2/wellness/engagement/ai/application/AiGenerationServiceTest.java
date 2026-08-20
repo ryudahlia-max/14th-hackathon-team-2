@@ -61,7 +61,8 @@ class AiGenerationServiceTest {
                 notifications,
                 realtime,
                 new SafeFuturePromptBuilder(),
-                new TransactionTemplate(new NoopTransactionManager())
+                new TransactionTemplate(new NoopTransactionManager()),
+                3
         );
         when(core.areAcceptedFriends(requester, target)).thenReturn(true);
         when(core.hasAiImageConsent(target)).thenReturn(true);
@@ -93,6 +94,22 @@ class AiGenerationServiceTest {
 
         assertThatThrownBy(() -> service.request(requester, target, occurrence, "x"))
                 .isInstanceOf(ApiException.class);
+    }
+
+    @Test
+    void nonPositiveDailyLimitDisablesApplicationLimit() {
+        service = new AiGenerationService(
+                jobs, core, storage, images, chat, notifications, realtime,
+                new SafeFuturePromptBuilder(),
+                new TransactionTemplate(new NoopTransactionManager()),
+                0
+        );
+        when(jobs.countByRequesterIdAndCreatedAtGreaterThanEqual(eq(requester), any())).thenReturn(100L);
+
+        service.request(requester, target, occurrence, "unlimited");
+
+        verify(jobs).save(any());
+        verify(jobs, never()).countByRequesterIdAndCreatedAtGreaterThanEqual(any(), any());
     }
 
     @Test

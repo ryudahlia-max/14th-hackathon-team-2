@@ -8,6 +8,12 @@ import { useAuth } from '../auth/authState';
 
 const TERMINAL = new Set(['SUCCEEDED', 'FAILED', 'BLOCKED']);
 
+const FAILURE_MESSAGES: Record<string, string> = {
+  OPENAI_BILLING_REQUIRED: 'OpenAI 이미지 사용 한도가 0입니다. 결제 수단 또는 프로젝트 사용 한도를 확인해주세요.',
+  OPENAI_RATE_LIMIT: 'OpenAI 요청이 몰려 잠시 제한되었습니다. 잠시 후 다시 시도해주세요.',
+  OPENAI_API_KEY_MISSING: '서버에 OpenAI API 키가 설정되지 않았습니다.',
+};
+
 export default function AiImageGenPage() {
   const { chatId } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
@@ -43,7 +49,10 @@ export default function AiImageGenPage() {
         setJob(current);
       }
       if (!TERMINAL.has(current.status)) setError('생성이 오래 걸리고 있어요. 잠시 후 채팅방에서 확인해주세요.');
-      if (current.status === 'FAILED' || current.status === 'BLOCKED') setError(`이미지를 만들지 못했습니다. (${current.failureCode ?? current.status})`);
+      if (current.status === 'FAILED' || current.status === 'BLOCKED') {
+        const code = current.failureCode ?? current.status;
+        setError(FAILURE_MESSAGES[code] ?? `이미지를 만들지 못했습니다. (${code})`);
+      }
     } catch (requestError) {
       console.error(requestError);
       setError(requestError instanceof Error ? requestError.message : 'AI 이미지 요청에 실패했습니다.');
