@@ -5,6 +5,7 @@ import { getAiJob, requestAiImage, type AiJobResponse } from '../api/ai';
 import { getChatRooms } from '../api/chat';
 import { getMissedFriendRoutines, type MissedRoutineResponse } from '../api/routine';
 import { useAuth } from '../auth/authState';
+import { ApiError } from '../services/apiClient';
 
 const TERMINAL = new Set(['SUCCEEDED', 'FAILED', 'BLOCKED']);
 
@@ -12,6 +13,10 @@ const FAILURE_MESSAGES: Record<string, string> = {
   OPENAI_BILLING_REQUIRED: 'OpenAI 이미지 사용 한도가 0입니다. 결제 수단 또는 프로젝트 사용 한도를 확인해주세요.',
   OPENAI_RATE_LIMIT: 'OpenAI 요청이 몰려 잠시 제한되었습니다. 잠시 후 다시 시도해주세요.',
   OPENAI_API_KEY_MISSING: '서버에 OpenAI API 키가 설정되지 않았습니다.',
+  FACE_ASSET_MISSING: '친구가 프로필 사진을 등록해야 AI 이미지를 만들 수 있어요.',
+  FACE_REFERENCE_INVALID: '친구의 프로필 사진에 선명한 한 명의 실제 얼굴이 없어요. 얼굴 사진으로 바꾼 뒤 다시 시도해주세요.',
+  OPENAI_REFERENCE_CHECK_REJECTED: '프로필 얼굴 사진을 확인하지 못했습니다. 잠시 후 다시 시도해주세요.',
+  OPENAI_REFERENCE_CHECK_INVALID_RESPONSE: '프로필 얼굴 사진을 확인하지 못했습니다. 잠시 후 다시 시도해주세요.',
 };
 
 export default function AiImageGenPage() {
@@ -55,7 +60,11 @@ export default function AiImageGenPage() {
       }
     } catch (requestError) {
       console.error(requestError);
-      setError(requestError instanceof Error ? requestError.message : 'AI 이미지 요청에 실패했습니다.');
+      if (requestError instanceof ApiError) {
+        setError(FAILURE_MESSAGES[requestError.code] ?? requestError.message);
+      } else {
+        setError(requestError instanceof Error ? requestError.message : 'AI 이미지 요청에 실패했습니다.');
+      }
     }
   }
 
@@ -69,7 +78,8 @@ export default function AiImageGenPage() {
         <span className="text-base font-bold">AI 미래 이미지</span>
       </div>
       <div className="flex-1 overflow-y-auto px-5 py-6">
-        <p className="text-sm leading-relaxed text-gray-600 mb-6">친구가 놓친 건강 루틴을 선택하면, 서버가 루틴 종류와 최근 미실천 횟수를 안전한 프롬프트에 반영해 미래 이미지를 만들고 이 채팅방에 자동으로 전송합니다.</p>
+        <p className="text-sm leading-relaxed text-gray-600 mb-2">친구가 놓친 건강 루틴을 선택하면, 서버가 루틴 종류와 최근 미실천 횟수를 안전한 프롬프트에 반영해 미래 이미지를 만들고 이 채팅방에 자동으로 전송합니다.</p>
+        <p className="mb-6 text-xs leading-relaxed text-gray-400">친구 프로필에 한 명의 얼굴이 선명한 실제 사진이 있어야 같은 인물로 만들 수 있습니다. 실루엣·캐릭터·얼굴이 작은 사진은 생성 전에 차단됩니다.</p>
         {routines.length === 0 && !error && <p className="text-sm text-gray-400">생성 가능한 미완료 루틴이 없어요.</p>}
         <div className="space-y-3">
           {routines.map(routine => <button key={routine.routineId} disabled={Boolean(generating)} onClick={() => void generate(routine.routineId)} className="w-full rounded-xl border border-gray-200 px-4 py-3 text-left disabled:opacity-40"><p className="text-sm font-semibold">{routine.title}</p><p className="text-xs text-gray-400">최근 {routine.missedCount}회 미실천 · 마지막 {routine.missedDate}</p></button>)}

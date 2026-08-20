@@ -7,6 +7,7 @@ import com.team2.wellness.engagement.chat.application.ChatService;
 import com.team2.wellness.engagement.chat.domain.ChatMessage;
 import com.team2.wellness.engagement.notification.application.NotificationService;
 import com.team2.wellness.engagement.port.out.CoreAccessPort;
+import com.team2.wellness.engagement.port.out.FaceReferenceValidationPort;
 import com.team2.wellness.engagement.port.out.ImageGenerationPort;
 import com.team2.wellness.engagement.port.out.MediaStoragePort;
 import com.team2.wellness.engagement.port.out.RealtimePublisherPort;
@@ -28,6 +29,7 @@ public class AiGenerationService {
     private final AiGenerationJobRepository jobs;
     private final CoreAccessPort core;
     private final MediaStoragePort storage;
+    private final FaceReferenceValidationPort faceReferences;
     private final ImageGenerationPort images;
     private final ChatService chat;
     private final NotificationService notifications;
@@ -40,6 +42,7 @@ public class AiGenerationService {
             AiGenerationJobRepository jobs,
             CoreAccessPort core,
             MediaStoragePort storage,
+            FaceReferenceValidationPort faceReferences,
             ImageGenerationPort images,
             ChatService chat,
             NotificationService notifications,
@@ -51,6 +54,7 @@ public class AiGenerationService {
         this.jobs = jobs;
         this.core = core;
         this.storage = storage;
+        this.faceReferences = faceReferences;
         this.images = images;
         this.chat = chat;
         this.notifications = notifications;
@@ -61,18 +65,22 @@ public class AiGenerationService {
     }
 
     public AiGenerationJob request(UUID requester, UUID target, UUID occurrence, String clientRequestId) {
+        Optional<AiGenerationJob> existing = jobs.findByRequesterIdAndClientRequestId(requester, clientRequestId);
+        if (existing.isPresent()) return existing.get();
+        if (!core.areAcceptedFriends(requester, target)) {
+            throw fail(HttpStatus.FORBIDDEN, "AI_REQUIRES_FRIENDSHIP", "친구 관계에서만 만들 수 있습니다.");
+        }
+        if (!core.hasAiImageConsent(target)) {
+            throw fail(HttpStatus.FORBIDDEN, "AI_CONSENT_REQUIRED", "친구가 AI 얼굴 사진 사용에 동의해야 합니다.");
+        }
+        if (core.getMissedRoutineOccurrence(occurrence, target).isEmpty()) {
+            throw fail(HttpStatus.BAD_REQUEST, "MISSED_OCCURRENCE_REQUIRED", "생성 가능한 미완료 루틴이 아닙니다.");
+        }
+        validateFaceReference(target, true);
+
         return tx.execute(status -> {
-            Optional<AiGenerationJob> existing = jobs.findByRequesterIdAndClientRequestId(requester, clientRequestId);
-            if (existing.isPresent()) return existing.get();
-            if (!core.areAcceptedFriends(requester, target)) {
-                throw fail(HttpStatus.FORBIDDEN, "AI_REQUIRES_FRIENDSHIP");
-            }
-            if (!core.hasAiImageConsent(target)) {
-                throw fail(HttpStatus.FORBIDDEN, "AI_CONSENT_REQUIRED");
-            }
-            if (core.getMissedRoutineOccurrence(occurrence, target).isEmpty()) {
-                throw fail(HttpStatus.BAD_REQUEST, "MISSED_OCCURRENCE_REQUIRED");
-            }
+            Optional<AiGenerationJob> duplicate = jobs.findByRequesterIdAndClientRequestId(requester, clientRequestId);
+            if (duplicate.isPresent()) return duplicate.get();
             Instant startOfDay = LocalDate.now(ZoneOffset.UTC).atStartOfDay().toInstant(ZoneOffset.UTC);
             if (dailyLimit > 0
                     && jobs.countByRequesterIdAndCreatedAtGreaterThanEqual(requester, startOfDay) >= dailyLimit) {
@@ -94,12 +102,11 @@ public class AiGenerationService {
             CoreAccessPort.MissedRoutineOccurrence occurrence = core
                     .getMissedRoutineOccurrence(claimed.getOccurrenceId(), claimed.getTargetUserId())
                     .orElseThrow(() -> new NonRetryable("MISSED_OCCURRENCE_NO_LONGER_AVAILABLE"));
-            MediaStoragePort.StoredMedia face = storage.findFaceAsset(claimed.getTargetUserId())
-                    .orElseThrow(() -> new NonRetryable("FACE_ASSET_MISSING"));
+            FaceReference face = validateFaceReference(claimed.getTargetUserId(), false);
             ImageGenerationPort.ImageResult result = images.generate(new ImageGenerationPort.ImageCommand(
                     prompts.build(occurrence),
-                    storage.read(face.objectKey()),
-                    face.contentType()
+                    face.bytes(),
+                    face.media().contentType()
             ));
             validateRelationshipAndConsent(claimed);
             MediaStoragePort.StoredMedia stored = storage.storeAiOutput(
@@ -188,8 +195,41 @@ public class AiGenerationService {
                 : "AI_PROVIDER_ERROR";
     }
 
+    private FaceReference validateFaceReference(UUID targetUserId, boolean apiRequest) {
+        MediaStoragePort.StoredMedia media = storage.findFaceAsset(targetUserId)
+                .orElseThrow(() -> referenceFailure("FACE_ASSET_MISSING", apiRequest));
+        byte[] bytes = storage.read(media.objectKey());
+        try {
+            if (!faceReferences.isUsableIdentityReference(bytes, media.contentType())) {
+                throw referenceFailure("FACE_REFERENCE_INVALID", apiRequest);
+            }
+            return new FaceReference(media, bytes);
+        } catch (ImageGenerationException exception) {
+            if (!apiRequest) throw exception;
+            HttpStatus status = exception.retryable()
+                    ? HttpStatus.SERVICE_UNAVAILABLE
+                    : HttpStatus.BAD_GATEWAY;
+            throw fail(status, exception.code(), "얼굴 사진 확인 서비스에 일시적인 문제가 있습니다.");
+        }
+    }
+
+    private RuntimeException referenceFailure(String code, boolean apiRequest) {
+        if (!apiRequest) return new NonRetryable(code);
+        String message = "FACE_ASSET_MISSING".equals(code)
+                ? "친구가 프로필 사진을 등록해야 합니다."
+                : "친구의 프로필을 한 명의 얼굴이 선명한 실제 사진으로 바꾼 뒤 다시 시도해 주세요.";
+        return fail(HttpStatus.UNPROCESSABLE_ENTITY, code, message);
+    }
+
     private ApiException fail(HttpStatus status, String code) {
-        return new ApiException(status, code, code);
+        return fail(status, code, code);
+    }
+
+    private ApiException fail(HttpStatus status, String code, String message) {
+        return new ApiException(status, code, message);
+    }
+
+    private record FaceReference(MediaStoragePort.StoredMedia media, byte[] bytes) {
     }
 
     public record JobView(

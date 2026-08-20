@@ -19,6 +19,7 @@ import com.team2.wellness.engagement.chat.application.ChatService;
 import com.team2.wellness.engagement.chat.domain.ChatRoom;
 import com.team2.wellness.engagement.notification.application.NotificationService;
 import com.team2.wellness.engagement.port.out.CoreAccessPort;
+import com.team2.wellness.engagement.port.out.FaceReferenceValidationPort;
 import com.team2.wellness.engagement.port.out.ImageGenerationPort;
 import com.team2.wellness.engagement.port.out.MediaStoragePort;
 import com.team2.wellness.engagement.port.out.RealtimePublisherPort;
@@ -41,6 +42,7 @@ class AiGenerationServiceTest {
     private final AiGenerationJobRepository jobs = mock(AiGenerationJobRepository.class);
     private final CoreAccessPort core = mock(CoreAccessPort.class);
     private final MediaStoragePort storage = mock(MediaStoragePort.class);
+    private final FaceReferenceValidationPort faceReferences = mock(FaceReferenceValidationPort.class);
     private final ImageGenerationPort images = mock(ImageGenerationPort.class);
     private final ChatService chat = mock(ChatService.class);
     private final NotificationService notifications = mock(NotificationService.class);
@@ -56,6 +58,7 @@ class AiGenerationServiceTest {
                 jobs,
                 core,
                 storage,
+                faceReferences,
                 images,
                 chat,
                 notifications,
@@ -77,6 +80,8 @@ class AiGenerationServiceTest {
                         LocalDate.of(2026, 8, 18)
                 )
         ));
+        prepareFace();
+        when(faceReferences.isUsableIdentityReference(any(), eq("image/png"))).thenReturn(true);
     }
 
     @Test
@@ -99,7 +104,7 @@ class AiGenerationServiceTest {
     @Test
     void nonPositiveDailyLimitDisablesApplicationLimit() {
         service = new AiGenerationService(
-                jobs, core, storage, images, chat, notifications, realtime,
+                jobs, core, storage, faceReferences, images, chat, notifications, realtime,
                 new SafeFuturePromptBuilder(),
                 new TransactionTemplate(new NoopTransactionManager()),
                 0
@@ -110,6 +115,32 @@ class AiGenerationServiceTest {
 
         verify(jobs).save(any());
         verify(jobs, never()).countByRequesterIdAndCreatedAtGreaterThanEqual(any(), any());
+    }
+
+    @Test
+    void invalidFaceReferenceRejectsRequestBeforeCreatingJob() {
+        when(faceReferences.isUsableIdentityReference(any(), eq("image/png"))).thenReturn(false);
+
+        assertThatThrownBy(() -> service.request(requester, target, occurrence, "invalid-face"))
+                .isInstanceOfSatisfying(ApiException.class, exception -> {
+                    assertThat(exception.code()).isEqualTo("FACE_REFERENCE_INVALID");
+                    assertThat(exception.status().value()).isEqualTo(422);
+                });
+
+        verify(jobs, never()).save(any());
+        verifyNoInteractions(images);
+    }
+
+    @Test
+    void faceChangedToInvalidBeforeWorkerExecutionIsBlocked() {
+        AiGenerationJob job = readyJob();
+        when(faceReferences.isUsableIdentityReference(any(), eq("image/png"))).thenReturn(false);
+
+        service.processNext();
+
+        assertThat(job.getStatus()).isEqualTo(AiGenerationJob.Status.BLOCKED);
+        assertThat(job.getFailureCode()).isEqualTo("FACE_REFERENCE_INVALID");
+        verifyNoInteractions(images);
     }
 
     @Test

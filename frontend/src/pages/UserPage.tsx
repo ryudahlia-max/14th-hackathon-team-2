@@ -123,6 +123,9 @@ export default function UserPage() {
               onChange={event => void handleAiConsent(event.target.checked)}
             />
           </label>
+          <p className="w-90 self-center px-2 text-xs leading-relaxed text-[#8a8a8a]">
+            같은 인물로 생성하려면 한 명의 얼굴이 정면에서 선명하게 보이는 실제 사진을 사용해주세요. 실루엣·캐릭터·여러 명 사진은 AI 생성에 사용할 수 없습니다.
+          </p>
           <UserMenuButton onClick={() => navigate('/friends')}>친구 관리</UserMenuButton>
           <UserMenuButton onClick={() => setShowLogoutModal(true)}>로그아웃</UserMenuButton>
           <UserMenuButton onClick={() => setShowDeleteModal(true)}>계정 삭제</UserMenuButton>
