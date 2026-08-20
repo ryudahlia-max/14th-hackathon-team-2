@@ -1,19 +1,31 @@
-# Team 2 Wellness Service
+# ROUTINEUS
+친구와 함께하는 웰니스 습관 기록 서비스입니다.
 
-Private wellness routine and social communication service for the 14th hackathon.
+## 서비스 소개
+기존 습관 관리 앱의 단순 텍스트 알림과 개인 체크리스트는 실질적인 자극이 부족해 쉽게
+무시되고, 개방형 SNS는 사소한 습관을 공유하기엔 부담스러워 가까운 지인끼리 편하게
+상호 케어할 공간이 부족합니다. ROUTINEUS는 가까운 지인과의 프라이빗한 루틴 공유와
+AI 이미지 시각화를 통해, 귀찮음을 넘어 지속 가능한 건강 습관을 형성하도록 돕습니다.
 
-## Repository layout
+**핵심 타겟**: 2030 연인(커플) — 건강 관리 필요성은 알지만 반복되는 잔소리로 서로
+지치는 유저
+**확장 타겟**: 2030 절친 및 가족 소그룹 — 대중형 SNS의 피로도 없이 소수 지인끼리
+웰니스 챌린지를 지속하고 싶은 그룹
 
-- `frontend/`: web client
-- `backend/`: Spring Boot API
-- `supabase/`: local Supabase configuration
-- `docs/BACKEND_PLAN.md`: one-week backend delivery plan and A/B integration checkpoints
-- `docs/DEVELOPER_B_TASKS.md`: self-contained engagement-module assignment for Developer B
-- `docs/DEPLOYMENT.md`: Supabase and Render release checklist
-- `AGENTS.md`: mandatory ownership and collaboration rules for coding agents
+## 주요 기능
+- **친구와 루틴 공유 & 메시지**: 불특정 다수가 아닌 친밀한 지인끼리 부담 없이 습관을
+  인증하고, 리액션으로 지속성을 높이는 1:1 · 단톡방 기반 폐쇄형 소통
+- **AI 이미지 생성**: 친구가 루틴을 미실천하면 채팅창 내에서 해당 친구의 10년 뒤
+  모습을 AI로 즉시 생성해, 텍스트 잔소리 대신 직관적인 시각 자극으로 즉각적인 행동을
+  유도
 
-## Backend quick start
+## 차별점
+기존 투두형 앱(제한적 친구 공유, 미완료 시 단순 방치)이나 개인 루틴 앱(개인 중심,
+미달성 시 중단·방치), 개방형 SNS(불특정 다수 공개, 미실천 기록 없음)와 달리,
+ROUTINEUS는 100% 지인 중심 폐쇄형 채널에서 친구가 보내는 AI 이미지 자극과
+건설적인 리액션으로 유머와 충격이 결합된 친밀한 케어를 제공합니다.
 
-See `backend/README.md`. Developer A owns infrastructure and the Core module. Developer B owns
-only the Engagement module and can implement it without Supabase, deployment credentials or
-access to Developer A's implementation.
+## 기술 스택
+**프론트엔드**: React, TypeScript, Tailwind CSS v4, Vite, react-router-dom
+**백엔드**: Spring Boot, Supabase (Database + Auth)
+**배포**: Render
