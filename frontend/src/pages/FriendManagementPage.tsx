@@ -5,6 +5,7 @@ import InviteFriendModal from '../components/InviteFriendModal';
 import CreateGroupModal from '../components/CreateGroupModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { getFriends, getGroups, removeFriend } from '../api/friend';
+import { createGroupRoom } from '../api/chat';
 import type { Friend, Group } from '../types/friend';
 import Avatar from '../components/Avatar';
 
@@ -53,9 +54,15 @@ function FriendRow({
   );
 }
 
-function GroupRow({ group }: { group: Group }) {
+function GroupRow({ group, onOpen, disabled }: { group: Group; onOpen: (group: Group) => void; disabled: boolean }) {
   return (
-    <div className="flex w-full items-center gap-3">
+    <button
+      type="button"
+      onClick={() => onOpen(group)}
+      disabled={disabled}
+      aria-label={`${group.name} 그룹 채팅 열기`}
+      className="flex w-full items-center gap-3 rounded-xl p-1 text-left disabled:opacity-50"
+    >
       <div className="size-12 shrink-0 rounded-full bg-gray-300" />
       <div className="flex flex-1 flex-col gap-0.5 truncate">
         <p className="truncate text-sm text-black">{group.name}</p>
@@ -63,7 +70,7 @@ function GroupRow({ group }: { group: Group }) {
           {group.memberCount}/{group.maxMember}명
         </p>
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -89,6 +96,7 @@ export default function FriendManagementPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(true);
   const [groupsError, setGroupsError] = useState<string | null>(null);
+  const [openingGroupId, setOpeningGroupId] = useState<string | null>(null);
 
   const [pendingDeleteFriend, setPendingDeleteFriend] = useState<Friend | null>(null);
   const [isActionRunning, setIsActionRunning] = useState(false);
@@ -145,6 +153,21 @@ export default function FriendManagementPage() {
       setActionError(err instanceof Error ? err.message : '삭제에 실패했습니다.');
     } finally {
       setIsActionRunning(false);
+    }
+  }
+
+  async function handleOpenGroup(group: Group) {
+    if (openingGroupId) return;
+    setOpeningGroupId(group.id);
+    setGroupsError(null);
+    try {
+      const room = await createGroupRoom(group.id);
+      navigate(`/messages/${room.id}`);
+    } catch (err) {
+      console.error('그룹 채팅방을 열지 못했습니다.', err);
+      setGroupsError(err instanceof Error ? err.message : '그룹 채팅방을 열지 못했습니다.');
+    } finally {
+      setOpeningGroupId(null);
     }
   }
 
@@ -213,7 +236,12 @@ export default function FriendManagementPage() {
             <AddButton label="그룹 만들기" onClick={() => setShowCreateGroupModal(true)} />
             <div className="flex w-full flex-col gap-4">
               {groups.map((group) => (
-                <GroupRow key={group.id} group={group} />
+                <GroupRow
+                  key={group.id}
+                  group={group}
+                  onOpen={(selectedGroup) => void handleOpenGroup(selectedGroup)}
+                  disabled={openingGroupId !== null}
+                />
               ))}
             </div>
           </div>
