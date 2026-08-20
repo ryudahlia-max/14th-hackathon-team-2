@@ -30,6 +30,9 @@ class SafeFuturePromptBuilderTest {
                 .contains("<category>수분 건강</category>")
                 .contains("<missed_occurrences_last_366_scheduled_days>7")
                 .contains("<most_recent_missed_date>2026-08-18")
+                .contains("identity source, not merely style inspiration")
+                .contains("exact same")
+                .contains("Do not invent, replace, recast")
                 .doesNotContain("<script>");
     }
 }

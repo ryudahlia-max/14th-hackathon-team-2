@@ -78,6 +78,24 @@ class SupabaseAdaptersTest {
     }
 
     @Test
+    void faceAssetLargerThanWebClientDefaultBufferCanBeRead() {
+        byte[] face = new byte[3 * 1024 * 1024];
+        face[0] = 1;
+        face[face.length - 1] = 2;
+        server.enqueue(new MockResponse()
+                .setResponseCode(200)
+                .setHeader("Content-Type", "image/png")
+                .setBody(new okio.Buffer().write(face)));
+        SupabaseMediaStorageAdapter adapter = storageAdapter("sb_secret_test");
+
+        byte[] downloaded = adapter.read("avatars/user/large-face.png");
+
+        assertThat(downloaded).hasSize(face.length);
+        assertThat(downloaded[0]).isEqualTo((byte) 1);
+        assertThat(downloaded[downloaded.length - 1]).isEqualTo((byte) 2);
+    }
+
+    @Test
     void realtimeBroadcastUsesPrivateTopicRestEndpoint() throws InterruptedException {
         server.enqueue(new MockResponse().setResponseCode(202));
         SupabaseRealtimePublisherAdapter adapter = new SupabaseRealtimePublisherAdapter(

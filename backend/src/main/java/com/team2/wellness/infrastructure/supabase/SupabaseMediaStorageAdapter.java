@@ -43,7 +43,10 @@ public class SupabaseMediaStorageAdapter implements MediaStoragePort, AvatarStor
     ) {
         this.profileRepository = profileRepository;
         this.supabaseUrl = stripTrailingSlash(supabaseUrl);
-        this.client = webClientBuilder.baseUrl(this.supabaseUrl).build();
+        this.client = webClientBuilder
+                .baseUrl(this.supabaseUrl)
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(maxBytes))
+                .build();
         this.secretKey = secretKey;
         this.avatarBucket = avatarBucket;
         this.aiBucket = aiBucket;
