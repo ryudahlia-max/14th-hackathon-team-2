@@ -7,6 +7,7 @@ export interface RoutineResponse {
   color: string;
   daysOfWeek: string[];
   reminderTime: string;
+  completionDeadline: string;
   timezone: string;
   startDate: string;
   endDate: string | null;
@@ -31,13 +32,21 @@ export interface MissedRoutineResponse {
 
 const ALL_DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
 
-function payload(title: string, category: string, color: string, startDate: string, existing?: RoutineResponse) {
+function payload(
+  title: string,
+  category: string,
+  color: string,
+  completionDeadline: string,
+  startDate: string,
+  existing?: RoutineResponse,
+) {
   return {
     title,
     category,
     color,
     daysOfWeek: existing?.daysOfWeek ?? ALL_DAYS,
-    reminderTime: existing?.reminderTime ?? '09:00:00',
+    reminderTime: existing?.reminderTime ?? completionDeadline,
+    completionDeadline,
     timezone: existing?.timezone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul'),
     startDate: existing?.startDate ?? startDate,
     endDate: existing?.endDate ?? null,
@@ -47,11 +56,25 @@ function payload(title: string, category: string, color: string, startDate: stri
 export const getRoutines = () => api.get<RoutineResponse[]>('/api/v1/routines');
 export const getFriendRoutines = (friendId: string) =>
   api.get<RoutineResponse[]>(`/api/v1/routines/friends/${friendId}`);
-export const createRoutine = (title: string, category: string, color: string, startDate: string) =>
-  api.post<RoutineResponse>('/api/v1/routines', payload(title, category, color, startDate));
-export const updateRoutine = (routine: RoutineResponse, title: string, category: string, color: string) =>
+export const createRoutine = (
+  title: string,
+  category: string,
+  color: string,
+  completionDeadline: string,
+  startDate: string,
+) => api.post<RoutineResponse>(
+  '/api/v1/routines',
+  payload(title, category, color, completionDeadline, startDate),
+);
+export const updateRoutine = (
+  routine: RoutineResponse,
+  title: string,
+  category: string,
+  color: string,
+  completionDeadline: string,
+) =>
   api.patch<RoutineResponse>(`/api/v1/routines/${routine.id}`, {
-    routine: payload(title, category, color, routine.startDate, routine),
+    routine: payload(title, category, color, completionDeadline, routine.startDate, routine),
     active: routine.active,
   });
 export const deleteRoutine = (id: string) => api.delete<void>(`/api/v1/routines/${id}`);

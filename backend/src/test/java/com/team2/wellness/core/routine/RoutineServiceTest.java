@@ -62,6 +62,7 @@ class RoutineServiceTest {
                 "#34D399",
                 EnumSet.allOf(DayOfWeek.class),
                 LocalTime.of(9, 0),
+                LocalTime.of(21, 0),
                 "Asia/Seoul",
                 LocalDate.of(2026, 8, 1),
                 null
@@ -73,6 +74,7 @@ class RoutineServiceTest {
         verify(routineRepository).save(captor.capture());
         assertThat(captor.getValue().getCategory()).isEqualTo("HYDRATION");
         assertThat(captor.getValue().getColor()).isEqualTo("#34D399");
+        assertThat(captor.getValue().getCompletionDeadline()).isEqualTo(LocalTime.of(21, 0));
     }
 
     @Test
@@ -85,6 +87,7 @@ class RoutineServiceTest {
                 "#60A5FA",
                 EnumSet.of(DayOfWeek.SATURDAY),
                 LocalTime.of(9, 0),
+                LocalTime.of(21, 0),
                 "Asia/Seoul",
                 LocalDate.of(2026, 8, 1),
                 null
@@ -157,7 +160,7 @@ class RoutineServiceTest {
     @Test
     void missedRoutineIncludesTypeCountAndMostRecentDate() {
         UUID userId = UUID.randomUUID();
-        LocalDate today = LocalDate.now(java.time.ZoneId.of("Asia/Seoul"));
+        LocalDate today = LocalDate.of(2026, 8, 20);
         Routine routine = new Routine(
                 userId,
                 "아침 물 마시기",
@@ -165,6 +168,7 @@ class RoutineServiceTest {
                 "#60A5FA",
                 EnumSet.allOf(DayOfWeek.class),
                 LocalTime.of(9, 0),
+                LocalTime.of(21, 0),
                 "Asia/Seoul",
                 today.minusDays(5),
                 null
@@ -179,13 +183,72 @@ class RoutineServiceTest {
                 new RoutineCompletion(routine.getId(), userId, today.minusDays(4), java.time.Instant.now(), null, null)
         ));
 
-        assertThat(service.missedRoutine(userId, routine.getId()))
+        assertThat(service.missedRoutine(
+                userId,
+                routine.getId(),
+                java.time.Instant.parse("2026-08-20T11:00:00Z")
+        ))
                 .hasValueSatisfying(missed -> {
                     assertThat(missed.title()).isEqualTo("아침 물 마시기");
                     assertThat(missed.category()).isEqualTo("수분");
                     assertThat(missed.missedCount()).isEqualTo(3);
                     assertThat(missed.missedDate()).isEqualTo(today.minusDays(1));
                 });
+    }
+
+    @Test
+    void todaysRoutineBecomesMissedAtItsLocalCompletionDeadline() {
+        UUID userId = UUID.randomUUID();
+        LocalDate today = LocalDate.of(2026, 8, 20);
+        Routine routine = new Routine(
+                userId,
+                "데모 산책",
+                "MOVEMENT",
+                "#60A5FA",
+                EnumSet.of(DayOfWeek.THURSDAY),
+                LocalTime.of(8, 0),
+                LocalTime.of(10, 0),
+                "Asia/Seoul",
+                today,
+                null
+        );
+        when(routineRepository.findByIdAndOwnerId(routine.getId(), userId)).thenReturn(Optional.of(routine));
+        when(completionRepository.findAllByRoutineIdAndCompletionDateBetween(routine.getId(), today, today))
+                .thenReturn(List.of());
+
+        assertThat(service.missedRoutine(
+                userId,
+                routine.getId(),
+                java.time.Instant.parse("2026-08-20T01:00:00Z")
+        )).hasValueSatisfying(missed -> {
+            assertThat(missed.missedDate()).isEqualTo(today);
+            assertThat(missed.missedCount()).isEqualTo(1);
+        });
+    }
+
+    @Test
+    void todaysRoutineIsNotMissedBeforeItsLocalCompletionDeadline() {
+        UUID userId = UUID.randomUUID();
+        LocalDate today = LocalDate.of(2026, 8, 20);
+        Routine routine = new Routine(
+                userId,
+                "데모 산책",
+                "MOVEMENT",
+                "#60A5FA",
+                EnumSet.of(DayOfWeek.THURSDAY),
+                LocalTime.of(8, 0),
+                LocalTime.of(10, 0),
+                "Asia/Seoul",
+                today,
+                null
+        );
+        when(routineRepository.findByIdAndOwnerId(routine.getId(), userId)).thenReturn(Optional.of(routine));
+
+        assertThat(service.missedRoutine(
+                userId,
+                routine.getId(),
+                java.time.Instant.parse("2026-08-20T00:59:59Z")
+        )).isEmpty();
     }
 
     private Routine dailyRoutine(UUID userId) {
@@ -196,6 +259,7 @@ class RoutineServiceTest {
                 "#60A5FA",
                 EnumSet.allOf(DayOfWeek.class),
                 LocalTime.of(9, 0),
+                LocalTime.of(21, 0),
                 "Asia/Seoul",
                 LocalDate.of(2026, 8, 1),
                 null

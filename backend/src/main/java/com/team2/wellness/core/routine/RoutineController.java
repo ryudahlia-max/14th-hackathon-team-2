@@ -161,6 +161,7 @@ public class RoutineController {
             @jakarta.validation.constraints.Pattern(regexp = "^#[0-9A-Fa-f]{6}$") String color,
             @NotEmpty Set<DayOfWeek> daysOfWeek,
             @NotNull LocalTime reminderTime,
+            @NotNull LocalTime completionDeadline,
             @NotBlank String timezone,
             @NotNull LocalDate startDate,
             LocalDate endDate
@@ -172,6 +173,7 @@ public class RoutineController {
                     color,
                     daysOfWeek,
                     reminderTime,
+                    completionDeadline,
                     timezone,
                     startDate,
                     endDate
@@ -196,6 +198,7 @@ public class RoutineController {
             String color,
             Set<DayOfWeek> daysOfWeek,
             LocalTime reminderTime,
+            LocalTime completionDeadline,
             String timezone,
             LocalDate startDate,
             LocalDate endDate,
@@ -209,6 +212,7 @@ public class RoutineController {
                     routine.getColor(),
                     routine.getDaysOfWeek(),
                     routine.getReminderTime(),
+                    routine.getCompletionDeadline(),
                     routine.getTimezone(),
                     routine.getStartDate(),
                     routine.getEndDate(),

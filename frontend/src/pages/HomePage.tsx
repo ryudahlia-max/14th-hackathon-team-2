@@ -116,14 +116,23 @@ export default function HomePage() {
 
   useEffect(() => { void loadData(); }, [loadData]);
 
-  async function handleSaveRoutine(name: string, category: string, color: string) {
+  async function handleSaveRoutine(
+    name: string,
+    category: string,
+    color: string,
+    completionDeadline: string,
+  ) {
     try {
-      if (editingRoutine?.api) await updateRoutine(editingRoutine.api, name, category, color);
-      else await createRoutine(name, category, color, selectedDay);
+      if (editingRoutine?.api) {
+        await updateRoutine(editingRoutine.api, name, category, color, completionDeadline);
+      } else {
+        await createRoutine(name, category, color, completionDeadline, selectedDay);
+      }
       await loadData();
     } catch (saveError) {
       console.error(saveError);
       setError('루틴을 저장하지 못했습니다.');
+      throw saveError;
     }
   }
 

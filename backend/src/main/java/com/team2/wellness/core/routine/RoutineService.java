@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.zone.ZoneRulesException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,6 +44,7 @@ public class RoutineService {
                 normalizeColor(command.color()),
                 command.daysOfWeek(),
                 command.reminderTime(),
+                command.completionDeadline(),
                 command.timezone(),
                 command.startDate(),
                 command.endDate()
@@ -58,6 +60,7 @@ public class RoutineService {
                 normalizeColor(command.color()),
                 command.daysOfWeek(),
                 command.reminderTime(),
+                command.completionDeadline(),
                 command.timezone(),
                 command.startDate(),
                 command.endDate(),
@@ -128,23 +131,32 @@ public class RoutineService {
     }
 
     public List<MissedRoutine> missedRoutines(UUID ownerId) {
+        Instant now = Instant.now();
         return list(ownerId).stream()
-                .map(this::missedRoutine)
+                .map(routine -> missedRoutine(routine, now))
                 .flatMap(Optional::stream)
                 .toList();
     }
 
     public Optional<MissedRoutine> missedRoutine(UUID ownerId, UUID routineId) {
-        return routineRepository.findByIdAndOwnerId(routineId, ownerId).flatMap(this::missedRoutine);
+        return missedRoutine(ownerId, routineId, Instant.now());
     }
 
-    private Optional<MissedRoutine> missedRoutine(Routine routine) {
-        LocalDate today = LocalDate.now(ZoneId.of(routine.getTimezone()));
+    Optional<MissedRoutine> missedRoutine(UUID ownerId, UUID routineId, Instant now) {
+        return routineRepository.findByIdAndOwnerId(routineId, ownerId)
+                .flatMap(routine -> missedRoutine(routine, now));
+    }
+
+    private Optional<MissedRoutine> missedRoutine(Routine routine, Instant now) {
+        ZonedDateTime localNow = now.atZone(ZoneId.of(routine.getTimezone()));
+        LocalDate today = localNow.toLocalDate();
         LocalDate earliest = today.minusDays(366);
         if (routine.getStartDate().isAfter(earliest)) {
             earliest = routine.getStartDate();
         }
-        LocalDate latest = today.minusDays(1);
+        LocalDate latest = localNow.toLocalTime().isBefore(routine.getCompletionDeadline())
+                ? today.minusDays(1)
+                : today;
         if (routine.getEndDate() != null && routine.getEndDate().isBefore(latest)) {
             latest = routine.getEndDate();
         }
@@ -215,6 +227,7 @@ public class RoutineService {
             String color,
             Set<DayOfWeek> daysOfWeek,
             java.time.LocalTime reminderTime,
+            java.time.LocalTime completionDeadline,
             String timezone,
             LocalDate startDate,
             LocalDate endDate

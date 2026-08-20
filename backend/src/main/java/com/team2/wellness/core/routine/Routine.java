@@ -38,6 +38,9 @@ public class Routine {
     @Column(name = "reminder_time", nullable = false)
     private LocalTime reminderTime;
 
+    @Column(name = "completion_deadline", nullable = false)
+    private LocalTime completionDeadline;
+
     @Column(nullable = false, length = 50)
     private String timezone;
 
@@ -66,6 +69,7 @@ public class Routine {
             String color,
             Set<DayOfWeek> daysOfWeek,
             LocalTime reminderTime,
+            LocalTime completionDeadline,
             String timezone,
             LocalDate startDate,
             LocalDate endDate
@@ -78,6 +82,7 @@ public class Routine {
         this.color = color;
         this.daysOfWeek = serializeDays(daysOfWeek);
         this.reminderTime = reminderTime;
+        this.completionDeadline = completionDeadline;
         this.timezone = timezone;
         this.startDate = startDate;
         this.endDate = endDate;
@@ -92,6 +97,7 @@ public class Routine {
             String color,
             Set<DayOfWeek> daysOfWeek,
             LocalTime reminderTime,
+            LocalTime completionDeadline,
             String timezone,
             LocalDate startDate,
             LocalDate endDate,
@@ -102,6 +108,7 @@ public class Routine {
         this.color = color;
         this.daysOfWeek = serializeDays(daysOfWeek);
         this.reminderTime = reminderTime;
+        this.completionDeadline = completionDeadline;
         this.timezone = timezone;
         this.startDate = startDate;
         this.endDate = endDate;
@@ -151,6 +158,10 @@ public class Routine {
 
     public LocalTime getReminderTime() {
         return reminderTime;
+    }
+
+    public LocalTime getCompletionDeadline() {
+        return completionDeadline;
     }
 
     public String getTimezone() {

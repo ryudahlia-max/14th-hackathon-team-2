@@ -25,7 +25,7 @@ const CATEGORIES = [
 
 interface Props {
   initial?: Routine;
-  onSave: (name: string, category: string, color: string) => void;
+  onSave: (name: string, category: string, color: string, completionDeadline: string) => Promise<void>;
   onDelete?: () => void;
   onClose: () => void;
 }
@@ -35,11 +35,20 @@ export default function AddRoutineModal({ initial, onSave, onDelete, onClose }: 
   const [name, setName] = useState(initial?.name ?? '');
   const [category, setCategory] = useState(initial?.api?.category ?? 'OTHER');
   const [color, setColor] = useState(initial?.color ?? COLORS[0]);
+  const [completionDeadline, setCompletionDeadline] = useState(
+    initial?.api?.completionDeadline?.slice(0, 5) ?? '21:00',
+  );
+  const [saving, setSaving] = useState(false);
 
-  function handleSubmit() {
-    if (!name.trim()) return;
-    onSave(name.trim(), category, color);
-    onClose();
+  async function handleSubmit() {
+    if (!name.trim() || !completionDeadline || saving) return;
+    setSaving(true);
+    try {
+      await onSave(name.trim(), category, color, completionDeadline);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
   }
 
   function handleDelete() {
@@ -67,6 +76,19 @@ export default function AddRoutineModal({ initial, onSave, onDelete, onClose }: 
             autoFocus
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
           />
+        </div>
+
+        <div className="mb-5">
+          <label className="text-sm text-gray-500 mb-1.5 block">완료 마감 시간</label>
+          <input
+            type="time"
+            value={completionDeadline}
+            onChange={event => setCompletionDeadline(event.target.value)}
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#a2bfff]"
+          />
+          <p className="mt-1.5 text-xs text-gray-400">
+            이 시간이 지나도록 완료하지 않으면 바로 AI 이미지 생성 대상이 됩니다.
+          </p>
         </div>
 
         <div className="mb-5">
@@ -111,10 +133,10 @@ export default function AddRoutineModal({ initial, onSave, onDelete, onClose }: 
           )}
           <button
             onClick={handleSubmit}
-            disabled={!name.trim()}
+            disabled={!name.trim() || !completionDeadline || saving}
             className="flex-1 py-3 rounded-xl bg-[#a2bfff] text-white font-semibold text-sm disabled:opacity-40"
           >
-            {isEditing ? '수정' : '추가'}
+            {saving ? '저장 중…' : isEditing ? '수정' : '추가'}
           </button>
         </div>
       </div>

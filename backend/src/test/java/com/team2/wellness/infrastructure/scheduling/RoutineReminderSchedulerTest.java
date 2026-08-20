@@ -33,6 +33,7 @@ class RoutineReminderSchedulerTest {
                 "#60A5FA",
                 EnumSet.of(DayOfWeek.THURSDAY),
                 LocalTime.of(9, 0),
+                LocalTime.of(21, 0),
                 "Asia/Seoul",
                 LocalDate.of(2026, 8, 1),
                 null
