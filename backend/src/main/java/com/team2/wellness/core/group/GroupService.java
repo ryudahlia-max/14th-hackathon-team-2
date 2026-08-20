@@ -75,9 +75,14 @@ public class GroupService {
         addMemberInternal(group, userId);
     }
 
-    public void removeMember(UUID ownerId, UUID groupId, UUID userId) {
-        requireOwner(groupId, ownerId);
-        if (ownerId.equals(userId)) {
+    public void removeMember(UUID requesterId, UUID groupId, UUID userId) {
+        WellnessGroup group = findGroup(groupId);
+        boolean isOwner = group.getOwnerId().equals(requesterId);
+        boolean isSelfRemoval = requesterId.equals(userId);
+        if (!isOwner && !isSelfRemoval) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "GROUP_OWNER_REQUIRED", "그룹 소유자 권한이 필요합니다.");
+        }
+        if (group.getOwnerId().equals(userId)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "OWNER_CANNOT_BE_REMOVED", "그룹 소유자는 제거할 수 없습니다.");
         }
         GroupMember member = memberRepository.findByGroupIdAndUserId(groupId, userId)
